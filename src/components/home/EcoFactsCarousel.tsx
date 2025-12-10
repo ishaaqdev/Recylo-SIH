@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { Leaf } from "lucide-react";
 
 interface EcoFact {
   id: string;
@@ -11,14 +12,6 @@ interface EcoFactsCarouselProps {
   facts: EcoFact[];
 }
 
-const pastelColors = [
-  "bg-emerald-50",
-  "bg-sky-50",
-  "bg-amber-50",
-  "bg-rose-50",
-  "bg-violet-50",
-];
-
 export const EcoFactsCarousel = ({ facts }: EcoFactsCarouselProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -27,14 +20,15 @@ export const EcoFactsCarousel = ({ facts }: EcoFactsCarouselProps) => {
     if (facts.length === 0) return;
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % facts.length);
-    }, 3000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [facts.length]);
 
   useEffect(() => {
     if (containerRef.current) {
+      const scrollPosition = currentIndex * containerRef.current.offsetWidth;
       containerRef.current.scrollTo({
-        left: currentIndex * (containerRef.current.offsetWidth * 0.85 + 12),
+        left: scrollPosition,
         behavior: "smooth",
       });
     }
@@ -43,42 +37,46 @@ export const EcoFactsCarousel = ({ facts }: EcoFactsCarouselProps) => {
   if (facts.length === 0) return null;
 
   return (
-    <div className="animate-fade-up stagger-3">
-      <h3 className="text-lg font-bold text-foreground mb-4">Eco Facts</h3>
+    <div className="bg-card rounded-3xl p-5 premium-shadow border border-border/30 animate-fade-up stagger-3">
+      <div className="flex items-center gap-2 mb-4">
+        <Leaf className="w-5 h-5 text-primary" />
+        <h3 className="font-semibold text-foreground">Eco Facts</h3>
+      </div>
+      
       <div
         ref={containerRef}
-        className="flex gap-3 overflow-x-auto hide-scrollbar pb-2"
+        className="overflow-hidden"
       >
-        {facts.map((fact, index) => (
-          <div
-            key={fact.id}
-            className={`flex-shrink-0 w-[85%] ${
-              pastelColors[index % pastelColors.length]
-            } rounded-2xl p-5 soft-shadow`}
-          >
-            <div className="flex items-start gap-3">
-              <span className="text-3xl">{fact.icon}</span>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-foreground leading-relaxed">
-                  {fact.text}
-                </p>
-                <span className="inline-block mt-2 text-xs font-medium text-muted-foreground bg-background/50 px-2 py-1 rounded-full">
-                  {fact.category}
-                </span>
-              </div>
+        <div 
+          className="flex transition-transform duration-700 ease-out"
+          style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+        >
+          {facts.map((fact) => (
+            <div
+              key={fact.id}
+              className="w-full flex-shrink-0 px-1"
+            >
+              <p className="text-sm text-foreground leading-relaxed mb-2">
+                {fact.text}
+              </p>
+              <span className="inline-block text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                {fact.category}
+              </span>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-      <div className="flex justify-center gap-1.5 mt-3">
+      
+      {/* Dots */}
+      <div className="flex justify-center gap-1.5 mt-4">
         {facts.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentIndex(index)}
-            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+            className={`h-1.5 rounded-full transition-all duration-500 ${
               index === currentIndex
                 ? "bg-primary w-6"
-                : "bg-muted-foreground/30"
+                : "bg-muted-foreground/30 w-1.5"
             }`}
           />
         ))}

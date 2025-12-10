@@ -13,14 +13,14 @@ const navItems = [
 export const BottomNav = () => {
   return (
     <nav className="fixed bottom-4 left-4 right-4 z-50 animate-slide-up">
-      <div className="bg-card/95 backdrop-blur-xl rounded-3xl premium-shadow border border-border/50 px-2 py-2">
-        <div className="flex items-center justify-around">
+      <div className="bg-card/95 backdrop-blur-xl rounded-3xl premium-shadow border border-border/50 px-1 py-2">
+        <div className="flex items-center justify-between">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={cn(
-                "flex flex-col items-center gap-0.5 py-2 px-4 rounded-2xl transition-all duration-300",
+                "flex-1 flex flex-col items-center gap-0.5 py-2 rounded-2xl transition-all duration-300",
                 item.isCenter && "relative -mt-6"
               )}
               activeClassName="text-primary"

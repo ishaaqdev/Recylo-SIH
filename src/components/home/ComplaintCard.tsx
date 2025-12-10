@@ -1,15 +1,15 @@
 import { useState } from "react";
-import { Trash2, Truck, CalendarX, HelpCircle, X, Send } from "lucide-react";
+import { AlertCircle, ChevronRight, X, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 const complaintCategories = [
-  { id: "bin_issue", label: "Bin Issue", icon: Trash2, color: "bg-orange-50 text-orange-600" },
-  { id: "truck_issue", label: "Truck Issue", icon: Truck, color: "bg-blue-50 text-blue-600" },
-  { id: "missed_pickup", label: "Missed Pickup", icon: CalendarX, color: "bg-red-50 text-red-600" },
-  { id: "other", label: "Other", icon: HelpCircle, color: "bg-gray-50 text-gray-600" },
+  { id: "bin_issue", label: "Bin Issue" },
+  { id: "truck_issue", label: "Truck Issue" },
+  { id: "missed_pickup", label: "Missed Pickup" },
+  { id: "other", label: "Other" },
 ];
 
 interface ComplaintCardProps {
@@ -21,11 +21,6 @@ export const ComplaintCard = ({ householdId }: ComplaintCardProps) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleCategoryClick = (categoryId: string) => {
-    setSelectedCategory(categoryId);
-    setIsModalOpen(true);
-  };
 
   const handleSubmit = async () => {
     if (!selectedCategory || !description.trim()) {
@@ -47,7 +42,7 @@ export const ComplaintCard = ({ householdId }: ComplaintCardProps) => {
       if (error) throw error;
 
       toast({
-        title: "Complaint submitted!",
+        title: "Complaint submitted",
         description: "We'll resolve it as soon as possible.",
       });
       setIsModalOpen(false);
@@ -65,33 +60,34 @@ export const ComplaintCard = ({ householdId }: ComplaintCardProps) => {
 
   return (
     <>
-      <div className="bg-card rounded-3xl p-5 premium-shadow animate-fade-up stagger-4">
-        <h3 className="text-lg font-bold text-foreground mb-2">File a Complaint</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Having issues? Let us know and we'll help.
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          {complaintCategories.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => handleCategoryClick(category.id)}
-              className={`flex items-center gap-3 p-4 rounded-2xl ${category.color} hover:scale-[1.02] active:scale-[0.98] transition-all duration-200`}
-            >
-              <category.icon className="w-5 h-5" />
-              <span className="text-sm font-medium">{category.label}</span>
-            </button>
-          ))}
+      <div className="bg-card rounded-3xl p-5 premium-shadow border border-border/30 animate-fade-up stagger-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+              <AlertCircle className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">File a Complaint</h3>
+              <p className="text-xs text-muted-foreground">Report any issues</p>
+            </div>
+          </div>
+          <Button
+            onClick={() => setIsModalOpen(true)}
+            variant="outline"
+            className="rounded-xl"
+          >
+            Report
+            <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
         </div>
       </div>
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-50 flex items-end justify-center animate-fade-up">
-          <div className="bg-card w-full max-w-lg rounded-t-3xl p-6 animate-slide-up">
+        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center animate-fade-up">
+          <div className="bg-card w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-6 animate-slide-up">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-foreground">
-                {complaintCategories.find((c) => c.id === selectedCategory)?.label}
-              </h3>
+              <h3 className="text-xl font-bold text-foreground">Report Issue</h3>
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="p-2 rounded-full hover:bg-muted transition-colors"
@@ -99,6 +95,27 @@ export const ComplaintCard = ({ householdId }: ComplaintCardProps) => {
                 <X className="w-5 h-5 text-muted-foreground" />
               </button>
             </div>
+
+            {/* Category Selection */}
+            <div className="mb-4">
+              <p className="text-sm font-medium text-foreground mb-3">Select Issue Type</p>
+              <div className="grid grid-cols-2 gap-2">
+                {complaintCategories.map((category) => (
+                  <button
+                    key={category.id}
+                    onClick={() => setSelectedCategory(category.id)}
+                    className={`p-3 rounded-xl text-sm font-medium transition-all ${
+                      selectedCategory === category.id
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-foreground hover:bg-muted/80"
+                    }`}
+                  >
+                    {category.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <Textarea
               placeholder="Describe your issue in detail..."
               value={description}

@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { Bell } from "lucide-react";
 import { PointsCard } from "@/components/home/PointsCard";
 import { BinOverview } from "@/components/home/BinOverview";
 import { EcoFactsCarousel } from "@/components/home/EcoFactsCarousel";
 import { ComplaintCard } from "@/components/home/ComplaintCard";
+import { NotificationSheet } from "@/components/home/NotificationSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -32,11 +34,11 @@ const Home = () => {
   const [binData, setBinData] = useState<BinData | null>(null);
   const [ecoFacts, setEcoFacts] = useState<EcoFact[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch household
         const { data: householdData } = await supabase
           .from("households")
           .select("*")
@@ -46,7 +48,6 @@ const Home = () => {
         if (householdData) {
           setHousehold(householdData);
 
-          // Fetch bins
           const { data: binsData } = await supabase
             .from("bins")
             .select("*")
@@ -58,7 +59,6 @@ const Home = () => {
           }
         }
 
-        // Fetch eco facts
         const { data: factsData } = await supabase
           .from("ecofacts")
           .select("*");
@@ -91,11 +91,19 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-background pb-28 px-5 pt-8">
       {/* Header */}
-      <div className="mb-6 animate-fade-up">
-        <h1 className="text-2xl font-bold text-foreground">
-          Hi, {household?.name?.split(" ")[0] || "there"} 👋
-        </h1>
-        <p className="text-muted-foreground">Welcome to Recylo</p>
+      <div className="flex items-start justify-between mb-6 animate-fade-up">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            Hi, {household?.name?.split(" ")[0] || "there"}
+          </h1>
+          <p className="text-muted-foreground">Welcome to Recylo</p>
+        </div>
+        <button
+          onClick={() => setShowNotifications(true)}
+          className="w-10 h-10 bg-card rounded-xl flex items-center justify-center border border-border/30 soft-shadow"
+        >
+          <Bell className="w-5 h-5 text-foreground" />
+        </button>
       </div>
 
       {/* Points & Level Card */}
@@ -121,6 +129,12 @@ const Home = () => {
 
       {/* Complaint Card */}
       {household && <ComplaintCard householdId={household.id} />}
+
+      {/* Notifications Sheet */}
+      <NotificationSheet 
+        isOpen={showNotifications} 
+        onClose={() => setShowNotifications(false)} 
+      />
     </div>
   );
 };

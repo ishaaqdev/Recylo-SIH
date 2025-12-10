@@ -1,148 +1,263 @@
-import { useState } from "react";
-import { Gift, Clock, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, Ticket, Plus, Minus, Check } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
-const possibleRewards = [
-  { icon: "🎧", title: "Wireless Earbuds" },
-  { icon: "🎒", title: "Eco Backpack" },
-  { icon: "🌱", title: "Plant Kit" },
-  { icon: "☕", title: "Reusable Mug" },
-  { icon: "🧴", title: "Eco Care Kit" },
-  { icon: "🎁", title: "Mystery Box" },
+interface Draw {
+  id: string;
+  title: string;
+  prize: string;
+  ticketCost: number;
+  endDate: string;
+  totalTickets: number;
+  userTickets: number;
+}
+
+const draws: Draw[] = [
+  {
+    id: "1",
+    title: "iPhone 15 Pro",
+    prize: "Brand new iPhone 15 Pro 256GB",
+    ticketCost: 500,
+    endDate: "2025-01-15",
+    totalTickets: 2547,
+    userTickets: 0,
+  },
+  {
+    id: "2",
+    title: "Electric Car",
+    prize: "Tesla Model 3 Standard Range",
+    ticketCost: 2000,
+    endDate: "2025-02-01",
+    totalTickets: 892,
+    userTickets: 0,
+  },
+  {
+    id: "3",
+    title: "Bali Trip",
+    prize: "7 Days All-Inclusive Bali Vacation",
+    ticketCost: 300,
+    endDate: "2025-01-20",
+    totalTickets: 3421,
+    userTickets: 0,
+  },
+  {
+    id: "4",
+    title: "AirPods Pro",
+    prize: "Apple AirPods Pro 2nd Gen",
+    ticketCost: 100,
+    endDate: "2025-01-10",
+    totalTickets: 5678,
+    userTickets: 0,
+  },
+  {
+    id: "5",
+    title: "Gaming Console",
+    prize: "PlayStation 5 with 2 Controllers",
+    ticketCost: 200,
+    endDate: "2025-01-25",
+    totalTickets: 1892,
+    userTickets: 0,
+  },
 ];
 
 const LuckyDraw = () => {
-  const [entered, setEntered] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [userDraws, setUserDraws] = useState<Draw[]>(draws);
+  const [ticketCounts, setTicketCounts] = useState<Record<string, number>>({});
+  const [userPoints, setUserPoints] = useState(0);
+  const [householdId, setHouseholdId] = useState<string | null>(null);
+  const [showConfirm, setShowConfirm] = useState<string | null>(null);
 
-  const handleEnter = () => {
-    setEntered(true);
-    setShowConfirm(true);
-    toast({
-      title: "Entry Confirmed!",
-      description: "You're in the next lucky draw.",
+  useEffect(() => {
+    fetchUserData();
+  }, []);
+
+  const fetchUserData = async () => {
+    const { data: household } = await supabase
+      .from("households")
+      .select("id, points")
+      .limit(1)
+      .maybeSingle();
+
+    if (household) {
+      setUserPoints(household.points);
+      setHouseholdId(household.id);
+    }
+  };
+
+  const updateTicketCount = (drawId: string, delta: number) => {
+    setTicketCounts((prev) => ({
+      ...prev,
+      [drawId]: Math.max(0, (prev[drawId] || 0) + delta),
+    }));
+  };
+
+  const buyTickets = async (draw: Draw) => {
+    const count = ticketCounts[draw.id] || 0;
+    if (count === 0) return;
+
+    const totalCost = count * draw.ticketCost;
+    if (totalCost > userPoints) {
+      toast({
+        title: "Not enough points",
+        description: `You need ${totalCost} points but have ${userPoints}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      if (householdId) {
+        await supabase
+          .from("households")
+          .update({ points: userPoints - totalCost })
+          .eq("id", householdId);
+      }
+
+      setUserPoints((prev) => prev - totalCost);
+      setUserDraws((prev) =>
+        prev.map((d) =>
+          d.id === draw.id
+            ? { ...d, userTickets: d.userTickets + count, totalTickets: d.totalTickets + count }
+            : d
+        )
+      );
+      setTicketCounts((prev) => ({ ...prev, [draw.id]: 0 }));
+      setShowConfirm(draw.id);
+
+      toast({
+        title: "Tickets purchased",
+        description: `You bought ${count} ticket${count > 1 ? "s" : ""} for ${draw.title}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to purchase tickets",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
     });
   };
 
-  // Mock countdown - in real app would be dynamic
-  const timeLeft = "23h 45m 32s";
+  const getTimeRemaining = (endDate: string) => {
+    const diff = new Date(endDate).getTime() - Date.now();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    return `${days} days left`;
+  };
 
   return (
     <div className="min-h-screen bg-background pb-28 px-5 pt-8">
-      <div className="text-center mb-8 animate-fade-up">
-        <h1 className="text-2xl font-bold text-foreground">Lucky Draw 🎁</h1>
-        <p className="text-muted-foreground">Win exciting eco-rewards!</p>
-      </div>
-
-      {/* Timer Card */}
-      <div className="bg-gradient-to-br from-violet-100 to-purple-100 rounded-3xl p-6 mb-6 animate-fade-up stagger-1">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground mb-1">Next Draw In</p>
-            <h2 className="text-3xl font-bold text-foreground">{timeLeft}</h2>
-          </div>
-          <div className="w-16 h-16 bg-violet-200 rounded-2xl flex items-center justify-center">
-            <Clock className="w-8 h-8 text-violet-600" />
-          </div>
-        </div>
-        <div className="mt-4 pt-4 border-t border-violet-200">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Total Entries</span>
-            <span className="font-semibold text-foreground">1,247</span>
-          </div>
-          <div className="flex items-center justify-between text-sm mt-2">
-            <span className="text-muted-foreground">Your Entry Status</span>
-            <span
-              className={`font-semibold ${
-                entered ? "text-emerald-600" : "text-amber-600"
-              }`}
-            >
-              {entered ? "Entered ✓" : "Not Entered"}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Possible Rewards */}
-      <div className="mb-8 animate-fade-up stagger-2">
-        <h3 className="text-lg font-bold text-foreground mb-4">Possible Rewards</h3>
-        <div className="grid grid-cols-3 gap-3">
-          {possibleRewards.map((reward) => (
-            <div
-              key={reward.title}
-              className="bg-card rounded-2xl p-4 text-center soft-shadow"
-            >
-              <span className="text-3xl mb-2 block">{reward.icon}</span>
-              <p className="text-xs font-medium text-muted-foreground">
-                {reward.title}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Enter Button */}
-      <div className="animate-fade-up stagger-3">
-        <Button
-          onClick={handleEnter}
-          disabled={entered}
-          className="w-full h-14 rounded-2xl text-base font-semibold"
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-6 animate-fade-up">
+        <Link
+          to="/rewards"
+          className="w-10 h-10 bg-card rounded-xl flex items-center justify-center border border-border/30"
         >
-          {entered ? (
-            <>
-              <Check className="w-5 h-5 mr-2" />
-              Entry Confirmed
-            </>
-          ) : (
-            <>
-              <Gift className="w-5 h-5 mr-2" />
-              Enter Draw
-            </>
-          )}
-        </Button>
-        <p className="text-xs text-center text-muted-foreground mt-3">
-          Costs 50 points to enter
-        </p>
+          <ArrowLeft className="w-5 h-5 text-foreground" />
+        </Link>
+        <div>
+          <h1 className="text-xl font-bold text-foreground">Lucky Draws</h1>
+          <p className="text-sm text-muted-foreground">Win amazing prizes</p>
+        </div>
       </div>
 
-      {/* Rules */}
-      <div className="mt-8 bg-muted/50 rounded-2xl p-5 animate-fade-up stagger-4">
-        <h4 className="font-semibold text-foreground mb-3">How It Works</h4>
-        <ul className="space-y-2 text-sm text-muted-foreground">
-          <li className="flex items-start gap-2">
-            <span className="text-primary">1.</span>
-            Enter the draw with 50 points
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary">2.</span>
-            Wait for the timer to reach zero
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary">3.</span>
-            One lucky winner gets a random reward
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary">4.</span>
-            Non-winners get 25 points back
-          </li>
-        </ul>
+      {/* Points Balance */}
+      <div className="bg-card rounded-2xl p-4 mb-6 border border-border/30 animate-fade-up">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">Your Points</span>
+          <span className="text-xl font-bold text-foreground">{userPoints.toLocaleString()}</span>
+        </div>
+      </div>
+
+      {/* Draws List */}
+      <div className="space-y-4">
+        {userDraws.map((draw, index) => (
+          <div
+            key={draw.id}
+            className={`bg-card rounded-2xl p-5 border border-border/30 animate-fade-up stagger-${(index % 5) + 1}`}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h3 className="font-semibold text-foreground">{draw.title}</h3>
+                <p className="text-sm text-muted-foreground">{draw.prize}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">{getTimeRemaining(draw.endDate)}</p>
+                <p className="text-xs text-muted-foreground">Ends {formatDate(draw.endDate)}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mb-4 text-sm">
+              <span className="text-muted-foreground">
+                {draw.totalTickets.toLocaleString()} entries
+              </span>
+              <span className="text-primary font-medium">
+                {draw.ticketCost} pts/ticket
+              </span>
+            </div>
+
+            {draw.userTickets > 0 && (
+              <div className="bg-primary/10 text-primary text-sm font-medium px-3 py-2 rounded-xl mb-4 flex items-center gap-2">
+                <Check className="w-4 h-4" />
+                You have {draw.userTickets} ticket{draw.userTickets > 1 ? "s" : ""}
+              </div>
+            )}
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center bg-muted rounded-xl">
+                <button
+                  onClick={() => updateTicketCount(draw.id, -1)}
+                  className="p-3 hover:bg-muted/80 rounded-l-xl transition-colors"
+                >
+                  <Minus className="w-4 h-4 text-foreground" />
+                </button>
+                <span className="w-12 text-center font-medium text-foreground">
+                  {ticketCounts[draw.id] || 0}
+                </span>
+                <button
+                  onClick={() => updateTicketCount(draw.id, 1)}
+                  className="p-3 hover:bg-muted/80 rounded-r-xl transition-colors"
+                >
+                  <Plus className="w-4 h-4 text-foreground" />
+                </button>
+              </div>
+              <Button
+                onClick={() => buyTickets(draw)}
+                disabled={(ticketCounts[draw.id] || 0) === 0}
+                className="flex-1 rounded-xl"
+              >
+                <Ticket className="w-4 h-4 mr-2" />
+                Buy Tickets
+              </Button>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Confirmation Modal */}
       {showConfirm && (
         <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-50 flex items-center justify-center p-6">
           <div className="bg-card w-full max-w-sm rounded-3xl p-8 animate-scale-in text-center">
-            <span className="text-6xl mb-4 block animate-float">🎟️</span>
-            <h3 className="text-2xl font-bold text-foreground mb-2">You're In!</h3>
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="text-xl font-bold text-foreground mb-2">You're In</h3>
             <p className="text-muted-foreground mb-6">
-              Your entry has been confirmed. Good luck!
+              Good luck! Winners will be announced when the draw ends.
             </p>
             <Button
-              onClick={() => setShowConfirm(false)}
+              onClick={() => setShowConfirm(null)}
               className="w-full rounded-2xl h-12"
             >
-              Got It!
+              Continue
             </Button>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Sparkles, Clock, Gift, Lock, Check, ChevronRight, Ticket } from "lucide-react";
+import { Star, Clock, Gift, Lock, Check, ChevronRight, Ticket, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,18 +21,38 @@ interface Household {
   level: number;
 }
 
+interface ActiveTask {
+  id: string;
+  startedAt: number;
+}
+
+const ACTIVE_TASKS_KEY = "recylo_active_tasks";
+
 const Rewards = () => {
   const [household, setHousehold] = useState<Household | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [activeTasks, setActiveTasks] = useState<ActiveTask[]>([]);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showCongrats, setShowCongrats] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   useEffect(() => {
     fetchData();
+    loadActiveTasks();
   }, []);
+
+  const loadActiveTasks = () => {
+    const stored = localStorage.getItem(ACTIVE_TASKS_KEY);
+    if (stored) {
+      setActiveTasks(JSON.parse(stored));
+    }
+  };
+
+  const saveActiveTasks = (tasks: ActiveTask[]) => {
+    localStorage.setItem(ACTIVE_TASKS_KEY, JSON.stringify(tasks));
+    setActiveTasks(tasks);
+  };
 
   const fetchData = async () => {
     try {
@@ -65,29 +85,53 @@ const Rewards = () => {
 
   const confirmStartTask = () => {
     if (selectedTask) {
-      setActiveTaskId(selectedTask.id);
+      const newActiveTasks = [
+        ...activeTasks,
+        { id: selectedTask.id, startedAt: Date.now() },
+      ];
+      saveActiveTasks(newActiveTasks);
       setShowTaskModal(false);
       toast({
-        title: "Task Started!",
+        title: "Task Started",
         description: "You have 48 hours to complete this task.",
       });
     }
   };
 
-  const handleCompleteTask = async () => {
-    if (!household || !selectedTask) return;
+  const getTimeRemaining = (startedAt: number) => {
+    const elapsed = Date.now() - startedAt;
+    const remaining = 48 * 60 * 60 * 1000 - elapsed;
+    if (remaining <= 0) return "Expired";
+    const hours = Math.floor(remaining / (60 * 60 * 1000));
+    const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+    return `${hours}h ${minutes}m`;
+  };
+
+  const isTaskActive = (taskId: string) => {
+    return activeTasks.some((t) => t.id === taskId);
+  };
+
+  const getActiveTask = (taskId: string) => {
+    return activeTasks.find((t) => t.id === taskId);
+  };
+
+  const handleCompleteTask = async (task: Task) => {
+    if (!household) return;
 
     try {
       await supabase
         .from("households")
         .update({
-          points: household.points + selectedTask.points_reward,
-          level: household.level + selectedTask.level_reward,
+          points: household.points + task.points_reward,
+          level: household.level + task.level_reward,
         })
         .eq("id", household.id);
 
+      const newActiveTasks = activeTasks.filter((t) => t.id !== task.id);
+      saveActiveTasks(newActiveTasks);
+
+      setSelectedTask(task);
       setShowCongrats(true);
-      setActiveTaskId(null);
       fetchData();
     } catch (error) {
       toast({
@@ -97,21 +141,9 @@ const Rewards = () => {
     }
   };
 
-  const levels = Array.from({ length: 30 }, (_, i) => ({
+  const levels = Array.from({ length: 10 }, (_, i) => ({
     number: i + 1,
     points: (i + 1) * 100,
-    text: [
-      "Getting Started",
-      "Eco Beginner",
-      "Green Sprout",
-      "Recycling Fan",
-      "Earth Helper",
-      "Waste Warrior",
-      "Green Champion",
-      "Eco Expert",
-      "Planet Saver",
-      "Recylo Master",
-    ][i % 10],
     status: household
       ? i + 1 < household.level
         ? "completed"
@@ -124,11 +156,11 @@ const Rewards = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background pb-24 px-5 pt-8">
-        <Skeleton className="h-40 w-full mb-6 rounded-3xl" />
+        <Skeleton className="h-32 w-full mb-6 rounded-2xl" />
         <Skeleton className="h-8 w-32 mb-4 rounded-xl" />
         <div className="flex gap-3 overflow-x-auto pb-4">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-48 w-48 flex-shrink-0 rounded-3xl" />
+            <Skeleton key={i} className="h-40 w-40 flex-shrink-0 rounded-2xl" />
           ))}
         </div>
       </div>
@@ -138,180 +170,164 @@ const Rewards = () => {
   return (
     <div className="min-h-screen bg-background pb-28 px-5 pt-8">
       {/* Points Card */}
-      <div className="recylo-gradient rounded-3xl p-6 premium-shadow mb-6 animate-fade-up">
-        <div className="flex items-center justify-between">
+      <div className="bg-card rounded-2xl p-5 border border-border/30 mb-6 animate-fade-up">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-primary-foreground/80 text-sm mb-1">Your Rewards</p>
-            <h2 className="text-4xl font-bold text-primary-foreground mb-2">
+            <p className="text-sm text-muted-foreground mb-1">Your Points</p>
+            <h2 className="text-3xl font-bold text-foreground">
               {household?.points?.toLocaleString()}
             </h2>
-            <div className="inline-flex items-center gap-1.5 bg-primary-foreground/20 px-3 py-1.5 rounded-full">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
-              <span className="text-sm font-semibold text-primary-foreground">
-                Level {household?.level}
-              </span>
-            </div>
           </div>
-          <div className="flex flex-col gap-2">
-            <Link
-              to="/spinwheel"
-              className="bg-primary-foreground/20 hover:bg-primary-foreground/30 p-3 rounded-2xl transition-colors"
-            >
-              <Gift className="w-6 h-6 text-primary-foreground" />
-            </Link>
-            <Link
-              to="/coupons"
-              className="bg-primary-foreground/20 hover:bg-primary-foreground/30 p-3 rounded-2xl transition-colors"
-            >
-              <Ticket className="w-6 h-6 text-primary-foreground" />
-            </Link>
+          <div className="flex items-center gap-1.5 bg-primary/10 px-3 py-1.5 rounded-full">
+            <Star className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-primary">
+              Level {household?.level}
+            </span>
           </div>
+        </div>
+        <div className="flex gap-2">
+          <Link
+            to="/spinwheel"
+            className="flex-1 bg-muted rounded-xl p-3 text-center hover:bg-muted/80 transition-colors"
+          >
+            <RotateCw className="w-5 h-5 text-primary mx-auto mb-1" />
+            <p className="text-xs font-medium text-foreground">Spin</p>
+          </Link>
+          <Link
+            to="/luckydraw"
+            className="flex-1 bg-muted rounded-xl p-3 text-center hover:bg-muted/80 transition-colors"
+          >
+            <Gift className="w-5 h-5 text-primary mx-auto mb-1" />
+            <p className="text-xs font-medium text-foreground">Draws</p>
+          </Link>
+          <Link
+            to="/coupons"
+            className="flex-1 bg-muted rounded-xl p-3 text-center hover:bg-muted/80 transition-colors"
+          >
+            <Ticket className="w-5 h-5 text-primary mx-auto mb-1" />
+            <p className="text-xs font-medium text-foreground">Coupons</p>
+          </Link>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="flex gap-3 mb-6">
-        <Link
-          to="/spinwheel"
-          className="flex-1 bg-amber-50 rounded-2xl p-4 text-center animate-fade-up stagger-1"
-        >
-          <span className="text-2xl mb-2 block">🎡</span>
-          <p className="text-sm font-semibold text-foreground">Spin & Win</p>
-        </Link>
-        <Link
-          to="/luckydraw"
-          className="flex-1 bg-violet-50 rounded-2xl p-4 text-center animate-fade-up stagger-2"
-        >
-          <span className="text-2xl mb-2 block">🎁</span>
-          <p className="text-sm font-semibold text-foreground">Lucky Draw</p>
-        </Link>
-        <Link
-          to="/coupons"
-          className="flex-1 bg-emerald-50 rounded-2xl p-4 text-center animate-fade-up stagger-3"
-        >
-          <span className="text-2xl mb-2 block">🎟️</span>
-          <p className="text-sm font-semibold text-foreground">Coupons</p>
-        </Link>
-      </div>
-
-      {/* Tasks Carousel */}
-      <div className="mb-8 animate-fade-up stagger-4">
-        <h3 className="text-lg font-bold text-foreground mb-4">Eco Tasks</h3>
-        <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
-          {tasks.map((task) => (
-            <div
-              key={task.id}
-              className="flex-shrink-0 w-48 bg-card rounded-3xl p-5 soft-shadow"
-            >
-              <span className="text-3xl mb-3 block">{task.icon}</span>
-              <h4 className="font-bold text-foreground mb-1">{task.title}</h4>
-              <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-                {task.description}
-              </p>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
-                  +{task.points_reward} pts
-                </span>
-                {task.level_reward > 0 && (
-                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">
-                    +{task.level_reward} lvl
-                  </span>
+      {/* Tasks */}
+      <div className="mb-8 animate-fade-up stagger-1">
+        <h3 className="font-semibold text-foreground mb-4">Eco Tasks</h3>
+        <div className="space-y-3">
+          {tasks.map((task) => {
+            const isActive = isTaskActive(task.id);
+            const activeTask = getActiveTask(task.id);
+            return (
+              <div
+                key={task.id}
+                className="bg-card rounded-2xl p-4 border border-border/30"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h4 className="font-medium text-foreground">{task.title}</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {task.description}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
+                      +{task.points_reward} pts
+                    </span>
+                    {task.level_reward > 0 && (
+                      <span className="bg-muted text-foreground px-2 py-1 rounded-full font-medium">
+                        +{task.level_reward} lvl
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {isActive && activeTask ? (
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="w-4 h-4" />
+                      <span>{getTimeRemaining(activeTask.startedAt)}</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleCompleteTask(task)}
+                      className="rounded-xl"
+                    >
+                      <Check className="w-4 h-4 mr-1" />
+                      Complete
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleStartTask(task)}
+                    className="w-full rounded-xl"
+                  >
+                    Start Task
+                  </Button>
                 )}
               </div>
-              {activeTaskId === task.id ? (
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setSelectedTask(task);
-                    handleCompleteTask();
-                  }}
-                  className="w-full rounded-xl text-xs"
-                >
-                  <Check className="w-3 h-3 mr-1" />
-                  Complete
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleStartTask(task)}
-                  className="w-full rounded-xl text-xs"
-                >
-                  Start Task
-                </Button>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* Levels Grid */}
-      <div className="animate-fade-up stagger-5">
-        <h3 className="text-lg font-bold text-foreground mb-4">Level Progress</h3>
-        <div className="grid grid-cols-2 gap-3">
-          {levels.slice(0, 10).map((level) => (
-            <div
-              key={level.number}
-              className={`rounded-2xl p-4 ${
-                level.status === "completed"
-                  ? "bg-emerald-50"
-                  : level.status === "current"
-                  ? "bg-primary/10 border-2 border-primary"
-                  : "bg-muted/50"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span
-                  className={`text-2xl font-bold ${
-                    level.status === "completed"
-                      ? "text-emerald-600"
-                      : level.status === "current"
-                      ? "text-primary"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {level.number}
-                </span>
-                {level.status === "completed" && (
-                  <Check className="w-5 h-5 text-emerald-500" />
-                )}
-                {level.status === "locked" && (
+      {/* Levels */}
+      <div className="animate-fade-up stagger-2">
+        <h3 className="font-semibold text-foreground mb-4">Level Progress</h3>
+        <div className="bg-card rounded-2xl p-4 border border-border/30">
+          <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-2">
+            {levels.map((level) => (
+              <div
+                key={level.number}
+                className={`flex-shrink-0 w-14 h-14 rounded-xl flex flex-col items-center justify-center ${
+                  level.status === "completed"
+                    ? "bg-emerald-100"
+                    : level.status === "current"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted"
+                }`}
+              >
+                {level.status === "completed" ? (
+                  <Check className="w-5 h-5 text-emerald-600" />
+                ) : level.status === "locked" ? (
                   <Lock className="w-4 h-4 text-muted-foreground" />
+                ) : (
+                  <span className="text-lg font-bold">{level.number}</span>
                 )}
+                <span className={`text-[10px] ${level.status === "current" ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                  {level.points}
+                </span>
               </div>
-              <p className="text-xs text-muted-foreground">{level.text}</p>
-              <p className="text-xs font-medium text-foreground mt-1">
-                {level.points} pts
-              </p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Task Start Modal */}
       {showTaskModal && selectedTask && (
         <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-card w-full max-w-sm rounded-3xl p-6 animate-scale-in">
+          <div className="bg-card w-full max-w-sm rounded-2xl p-6 animate-scale-in">
             <div className="text-center mb-6">
-              <span className="text-5xl mb-4 block">{selectedTask.icon}</span>
-              <h3 className="text-xl font-bold text-foreground mb-2">
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Clock className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">
                 {selectedTask.title}
               </h3>
-              <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                <Clock className="w-4 h-4" />
-                <span className="text-sm">48 hours to complete</span>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                48 hours to complete
+              </p>
             </div>
             <div className="flex gap-3">
               <Button
                 variant="outline"
                 onClick={() => setShowTaskModal(false)}
-                className="flex-1 rounded-2xl h-12"
+                className="flex-1 rounded-xl h-11"
               >
                 Cancel
               </Button>
-              <Button onClick={confirmStartTask} className="flex-1 rounded-2xl h-12">
-                Start Now
+              <Button onClick={confirmStartTask} className="flex-1 rounded-xl h-11">
+                Start
               </Button>
             </div>
           </div>
@@ -321,25 +337,26 @@ const Rewards = () => {
       {/* Congratulations Modal */}
       {showCongrats && selectedTask && (
         <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-card w-full max-w-sm rounded-3xl p-6 animate-scale-in text-center">
-            <span className="text-6xl mb-4 block animate-float">🎉</span>
-            <h3 className="text-2xl font-bold text-foreground mb-2">
-              Congratulations!
+          <div className="bg-card w-full max-w-sm rounded-2xl p-6 animate-scale-in text-center">
+            <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Check className="w-6 h-6 text-emerald-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Task Completed
             </h3>
-            <p className="text-muted-foreground mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               You earned {selectedTask.points_reward} points
               {selectedTask.level_reward > 0 &&
-                ` and leveled up ${selectedTask.level_reward} time(s)`}
-              !
+                ` and advanced ${selectedTask.level_reward} level`}
             </p>
             <Button
               onClick={() => {
                 setShowCongrats(false);
                 setSelectedTask(null);
               }}
-              className="w-full rounded-2xl h-12"
+              className="w-full rounded-xl h-11"
             >
-              Claim Reward
+              Continue
             </Button>
           </div>
         </div>

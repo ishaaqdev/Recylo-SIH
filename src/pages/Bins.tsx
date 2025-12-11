@@ -21,6 +21,14 @@ const binTypes = [
   { key: "hazardous", label: "Hazardous", color: "hsl(var(--hazardous))", icon: AlertTriangle, bgColor: "bg-red-50" },
 ];
 
+// Track bin conversions
+interface BinConversion {
+  from: string;
+  to: string;
+}
+
+const BIN_CONVERSIONS_KEY = "recylo_bin_conversions";
+
 const Bins = () => {
   const [binData, setBinData] = useState<BinData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,10 +36,24 @@ const Bins = () => {
   const [selectedBin, setSelectedBin] = useState<string | null>(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [swapTarget, setSwapTarget] = useState<string | null>(null);
+  const [conversions, setConversions] = useState<BinConversion[]>([]);
 
   useEffect(() => {
+    loadConversions();
     fetchBins();
   }, []);
+
+  const loadConversions = () => {
+    const stored = localStorage.getItem(BIN_CONVERSIONS_KEY);
+    if (stored) {
+      setConversions(JSON.parse(stored));
+    }
+  };
+
+  const saveConversions = (newConversions: BinConversion[]) => {
+    localStorage.setItem(BIN_CONVERSIONS_KEY, JSON.stringify(newConversions));
+    setConversions(newConversions);
+  };
 
   const fetchBins = async () => {
     try {
@@ -73,14 +95,9 @@ const Bins = () => {
   const handleConfirmSwap = async () => {
     if (!binData || !selectedBin || !swapTarget) return;
 
-    // Convert the empty bin to the selected type
-    // The empty bin (selectedBin) will be set to 0 and won't show anymore
-    // The target bin (swapTarget) keeps its value - we're just re-assigning the empty slot
-    
-    // This means: if hazardous is empty and user selects organic,
-    // hazardous becomes "disabled" (stays 0) and conceptually merged with organic
-    // For simplicity, we'll just mark it as converted by keeping it at 0
-    // In a real app, you'd track which bins are "active" separately
+    // Save the conversion
+    const newConversions = [...conversions, { from: selectedBin, to: swapTarget }];
+    saveConversions(newConversions);
     
     toast({
       title: "Bin converted successfully",
@@ -92,10 +109,30 @@ const Bins = () => {
     setSwapTarget(null);
   };
 
-  // Get empty bins for the swap section
+  // Get the display type for a bin (considering conversions)
+  const getDisplayType = (binKey: string) => {
+    const conversion = conversions.find((c) => c.from === binKey);
+    if (conversion) {
+      return binTypes.find((b) => b.key === conversion.to);
+    }
+    return binTypes.find((b) => b.key === binKey);
+  };
+
+  // Get empty bins for the swap section (bins that are at 0 and not converted)
   const emptyBins = binData
-    ? binTypes.filter((bin) => (binData[bin.key as keyof BinData] as number) === 0)
+    ? binTypes.filter((bin) => {
+        const isConverted = conversions.some((c) => c.from === bin.key);
+        const isEmpty = (binData[bin.key as keyof BinData] as number) === 0;
+        return isEmpty && !isConverted;
+      })
     : [];
+
+  // Get converted bins
+  const convertedBins = conversions.map((c) => ({
+    originalKey: c.from,
+    displayType: binTypes.find((b) => b.key === c.to)!,
+    originalType: binTypes.find((b) => b.key === c.from)!,
+  }));
 
   if (loading) {
     return (
@@ -122,22 +159,29 @@ const Bins = () => {
       <div className="grid grid-cols-2 gap-4 mb-6">
         {binTypes.map((bin, index) => {
           const percentage = binData ? (binData[bin.key as keyof BinData] as number) : 0;
-          const IconComponent = bin.icon;
+          const displayType = getDisplayType(bin.key);
+          const isConverted = conversions.some((c) => c.from === bin.key);
+          const IconComponent = displayType?.icon || bin.icon;
           
           return (
             <div
               key={bin.key}
-              className={`${bin.bgColor} rounded-3xl p-4 animate-fade-up`}
+              className={`${displayType?.bgColor || bin.bgColor} rounded-3xl p-4 animate-fade-up relative`}
               style={{ animationDelay: `${index * 100}ms` }}
             >
+              {isConverted && (
+                <span className="absolute top-2 right-2 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                  Converted
+                </span>
+              )}
               <div className="flex items-center gap-2 mb-3">
                 <IconComponent className="w-4 h-4 text-foreground/70" />
-                <span className="text-xs font-medium text-foreground/70">{bin.label}</span>
+                <span className="text-xs font-medium text-foreground/70">{displayType?.label || bin.label}</span>
               </div>
               <div className="flex justify-center">
                 <DonutChart
                   percentage={percentage}
-                  color={bin.color}
+                  color={displayType?.color || bin.color}
                   label=""
                   size={80}
                   strokeWidth={6}

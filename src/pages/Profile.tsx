@@ -51,6 +51,32 @@ const Profile = () => {
     fetchHousehold();
   }, []);
 
+  // Real-time subscription for household updates
+  useEffect(() => {
+    if (!household?.id) return;
+
+    const channel = supabase
+      .channel('profile-household-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'households',
+          filter: `id=eq.${household.id}`
+        },
+        (payload) => {
+          console.log('Household updated:', payload);
+          setHousehold(prev => prev ? { ...prev, ...payload.new as Partial<Household> } : null);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [household?.id]);
+
   const fetchHousehold = async () => {
     try {
       // Get current user session

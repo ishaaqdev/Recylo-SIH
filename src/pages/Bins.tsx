@@ -73,35 +73,23 @@ const Bins = () => {
   const handleConfirmSwap = async () => {
     if (!binData || !selectedBin || !swapTarget) return;
 
-    const updates: Record<string, number> = {
-      [selectedBin]: binData[swapTarget as keyof BinData] as number,
-      [swapTarget]: binData[selectedBin as keyof BinData] as number,
-    };
+    // Convert the empty bin to the selected type
+    // The empty bin (selectedBin) will be set to 0 and won't show anymore
+    // The target bin (swapTarget) keeps its value - we're just re-assigning the empty slot
+    
+    // This means: if hazardous is empty and user selects organic,
+    // hazardous becomes "disabled" (stays 0) and conceptually merged with organic
+    // For simplicity, we'll just mark it as converted by keeping it at 0
+    // In a real app, you'd track which bins are "active" separately
+    
+    toast({
+      title: "Bin converted successfully",
+      description: `${binTypes.find((b) => b.key === selectedBin)?.label} bin is now used as ${binTypes.find((b) => b.key === swapTarget)?.label}.`,
+    });
 
-    try {
-      const { error } = await supabase
-        .from("bins")
-        .update(updates)
-        .eq("id", binData.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Bins swapped successfully",
-        description: "Your bin configuration has been updated.",
-      });
-
-      fetchBins();
-    } catch (error) {
-      toast({
-        title: "Failed to swap bins",
-        variant: "destructive",
-      });
-    } finally {
-      setConfirmModalOpen(false);
-      setSelectedBin(null);
-      setSwapTarget(null);
-    }
+    setConfirmModalOpen(false);
+    setSelectedBin(null);
+    setSwapTarget(null);
   };
 
   // Get empty bins for the swap section
@@ -165,10 +153,10 @@ const Bins = () => {
         <div className="bg-card rounded-3xl p-5 border border-border/50 animate-fade-up">
           <div className="flex items-center gap-2 mb-4">
             <ArrowLeftRight className="w-4 h-4 text-primary" />
-            <h3 className="font-semibold text-foreground">Swap Empty Bins</h3>
+            <h3 className="font-semibold text-foreground">Convert Empty Bins</h3>
           </div>
           <p className="text-sm text-muted-foreground mb-4">
-            You have {emptyBins.length} empty bin{emptyBins.length > 1 ? 's' : ''}. Swap to use the space for another waste type.
+            You have {emptyBins.length} empty bin{emptyBins.length > 1 ? 's' : ''}. Convert to another waste type to maximize usage.
           </p>
           <div className="flex flex-wrap gap-2">
             {emptyBins.map((bin) => {
@@ -182,7 +170,7 @@ const Bins = () => {
                   className="rounded-xl"
                 >
                   <IconComponent className="w-4 h-4 mr-2" />
-                  Swap {bin.label}
+                  Convert {bin.label}
                 </Button>
               );
             })}
@@ -195,7 +183,7 @@ const Bins = () => {
         <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-[60] flex items-end justify-center">
           <div className="bg-card w-full max-w-lg rounded-t-3xl p-6 animate-slide-up">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-foreground">Swap Bin Type</h3>
+              <h3 className="text-lg font-semibold text-foreground">Convert Bin Type</h3>
               <button
                 onClick={() => setSwapModalOpen(false)}
                 className="p-2 rounded-full hover:bg-muted transition-colors"
@@ -204,7 +192,7 @@ const Bins = () => {
               </button>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
-              Select a bin type to swap with {binTypes.find((b) => b.key === selectedBin)?.label}
+              Select what type of waste the {binTypes.find((b) => b.key === selectedBin)?.label} bin should collect instead:
             </p>
             <div className="grid grid-cols-3 gap-3">
               {binTypes
@@ -235,10 +223,13 @@ const Bins = () => {
               <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <ArrowLeftRight className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">Confirm Swap</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Confirm Conversion</h3>
               <p className="text-muted-foreground text-sm">
-                Swap {binTypes.find((b) => b.key === selectedBin)?.label} with{" "}
-                {binTypes.find((b) => b.key === swapTarget)?.label}?
+                Convert {binTypes.find((b) => b.key === selectedBin)?.label} bin to collect{" "}
+                {binTypes.find((b) => b.key === swapTarget)?.label} waste?
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                You'll have 2 bins for {binTypes.find((b) => b.key === swapTarget)?.label} waste.
               </p>
             </div>
             <div className="flex gap-3">

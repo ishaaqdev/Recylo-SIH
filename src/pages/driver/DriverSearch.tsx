@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, Check, X, Phone, User, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { searchHouseholdByPhone, createCollectionLog } from "@/lib/driverActions";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 interface Household {
@@ -12,13 +14,33 @@ interface Household {
   address: string;
 }
 
+const sampleNumbers = [
+  "9437123456",
+  "8895654321",
+  "7788991234",
+  "9876543210",
+  "8765432109"
+];
+
 const DriverSearch = () => {
+  const navigate = useNavigate();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [results, setResults] = useState<Household[]>([]);
   const [searching, setSearching] = useState(false);
   const [selectedHousehold, setSelectedHousehold] = useState<Household | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showReject, setShowReject] = useState(false);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      navigate("/driver/auth");
+    }
+  };
 
   const handleSearch = async () => {
     if (phoneNumber.length < 4) {
@@ -107,7 +129,22 @@ const DriverSearch = () => {
               <Search className="w-5 h-5" />
             </Button>
           </div>
-          <p className="text-xs text-gray-400 mt-2">Example: 9437123456, 8895123456</p>
+        </div>
+
+        {/* Sample Numbers */}
+        <div className="mt-4 bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <p className="text-sm text-gray-500 mb-3">Quick Search (Sample Numbers)</p>
+          <div className="flex flex-wrap gap-2">
+            {sampleNumbers.map((num) => (
+              <button
+                key={num}
+                onClick={() => setPhoneNumber(num)}
+                className="px-4 py-2 bg-sky-50 text-sky-600 rounded-xl text-sm font-medium hover:bg-sky-100 transition-colors"
+              >
+                {num}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Results */}

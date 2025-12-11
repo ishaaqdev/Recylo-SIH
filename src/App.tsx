@@ -19,6 +19,7 @@ import NotFound from "./pages/NotFound";
 import DriverHome from "./pages/driver/DriverHome";
 import DriverSearch from "./pages/driver/DriverSearch";
 import DriverProfile from "./pages/driver/DriverProfile";
+import DriverAuth from "./pages/driver/DriverAuth";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />
+          {/* Driver Auth - Separate */}
+          <Route path="/driver/auth" element={<DriverAuth />} />
           {/* Driver App Routes */}
           <Route
             path="/driver/*"

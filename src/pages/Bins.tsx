@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, X, Check } from "lucide-react";
+import { ArrowLeftRight, X, Check, Leaf, Recycle, Trash2, AlertTriangle } from "lucide-react";
 import { DonutChart } from "@/components/ui/DonutChart";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,10 +15,10 @@ interface BinData {
 }
 
 const binTypes = [
-  { key: "organic", label: "Organic", color: "hsl(var(--organic))", icon: "🥬", bgColor: "bg-emerald-50" },
-  { key: "recyclable", label: "Recyclable", color: "hsl(var(--recyclable))", icon: "♻️", bgColor: "bg-sky-50" },
-  { key: "non_recyclable", label: "Non-Recyclable", color: "hsl(var(--non-recyclable))", icon: "🗑️", bgColor: "bg-gray-100" },
-  { key: "hazardous", label: "Hazardous", color: "hsl(var(--hazardous))", icon: "⚠️", bgColor: "bg-red-50" },
+  { key: "organic", label: "Organic", color: "hsl(var(--organic))", icon: Leaf, bgColor: "bg-emerald-50" },
+  { key: "recyclable", label: "Recyclable", color: "hsl(var(--recyclable))", icon: Recycle, bgColor: "bg-sky-50" },
+  { key: "non_recyclable", label: "Non-Recyclable", color: "hsl(var(--non-recyclable))", icon: Trash2, bgColor: "bg-gray-100" },
+  { key: "hazardous", label: "Hazardous", color: "hsl(var(--hazardous))", icon: AlertTriangle, bgColor: "bg-red-50" },
 ];
 
 const Bins = () => {
@@ -87,7 +87,7 @@ const Bins = () => {
       if (error) throw error;
 
       toast({
-        title: "Bins swapped successfully!",
+        title: "Bins swapped successfully",
         description: "Your bin configuration has been updated.",
       });
 
@@ -104,14 +104,19 @@ const Bins = () => {
     }
   };
 
+  // Get empty bins for the swap section
+  const emptyBins = binData
+    ? binTypes.filter((bin) => (binData[bin.key as keyof BinData] as number) === 0)
+    : [];
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background pb-24 px-5 pt-8">
+      <div className="min-h-screen bg-background pb-20 px-5 pt-8">
         <Skeleton className="h-8 w-40 mb-2 rounded-xl" />
         <Skeleton className="h-5 w-56 mb-8 rounded-xl" />
         <div className="grid grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-48 rounded-3xl" />
+            <Skeleton key={i} className="h-40 rounded-3xl" />
           ))}
         </div>
       </div>
@@ -119,51 +124,78 @@ const Bins = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-28 px-5 pt-8">
-      <div className="mb-8 animate-fade-up">
-        <h1 className="text-2xl font-bold text-foreground">My Smart Bin</h1>
-        <p className="text-muted-foreground">Monitor your waste compartments</p>
+    <div className="min-h-screen bg-background pb-20 px-5 pt-8">
+      {/* Header Card */}
+      <div className="bg-primary rounded-3xl p-5 mb-6 animate-fade-up">
+        <h1 className="text-xl font-semibold text-primary-foreground">My Smart Bin</h1>
+        <p className="text-primary-foreground/80 text-sm">Monitor your waste compartments</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4 mb-6">
         {binTypes.map((bin, index) => {
           const percentage = binData ? (binData[bin.key as keyof BinData] as number) : 0;
+          const IconComponent = bin.icon;
           
           return (
             <div
               key={bin.key}
-              className={`${bin.bgColor} rounded-3xl p-5 soft-shadow animate-fade-up stagger-${index + 1}`}
+              className={`${bin.bgColor} rounded-3xl p-4 animate-fade-up`}
+              style={{ animationDelay: `${index * 100}ms` }}
             >
-              <DonutChart
-                percentage={percentage}
-                color={bin.color}
-                label={bin.label}
-                icon={bin.icon}
-                size={100}
-                strokeWidth={10}
-              />
-              {percentage === 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleSwapClick(bin.key)}
-                  className="w-full mt-4 rounded-xl text-xs"
-                >
-                  <ArrowLeftRight className="w-3 h-3 mr-1" />
-                  Swap Type
-                </Button>
-              )}
+              <div className="flex items-center gap-2 mb-3">
+                <IconComponent className="w-4 h-4 text-foreground/70" />
+                <span className="text-xs font-medium text-foreground/70">{bin.label}</span>
+              </div>
+              <div className="flex justify-center">
+                <DonutChart
+                  percentage={percentage}
+                  color={bin.color}
+                  label=""
+                  size={80}
+                  strokeWidth={6}
+                />
+              </div>
             </div>
           );
         })}
       </div>
 
+      {/* Swap Empty Bins Section */}
+      {emptyBins.length > 0 && (
+        <div className="bg-card rounded-3xl p-5 border border-border/50 animate-fade-up">
+          <div className="flex items-center gap-2 mb-4">
+            <ArrowLeftRight className="w-4 h-4 text-primary" />
+            <h3 className="font-semibold text-foreground">Swap Empty Bins</h3>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            You have {emptyBins.length} empty bin{emptyBins.length > 1 ? 's' : ''}. Swap to use the space for another waste type.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {emptyBins.map((bin) => {
+              const IconComponent = bin.icon;
+              return (
+                <Button
+                  key={bin.key}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSwapClick(bin.key)}
+                  className="rounded-xl"
+                >
+                  <IconComponent className="w-4 h-4 mr-2" />
+                  Swap {bin.label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Swap Modal */}
       {swapModalOpen && (
-        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-50 flex items-end justify-center">
+        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-[60] flex items-end justify-center">
           <div className="bg-card w-full max-w-lg rounded-t-3xl p-6 animate-slide-up">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-foreground">Swap Bin Type</h3>
+              <h3 className="text-lg font-semibold text-foreground">Swap Bin Type</h3>
               <button
                 onClick={() => setSwapModalOpen(false)}
                 className="p-2 rounded-full hover:bg-muted transition-colors"
@@ -171,19 +203,25 @@ const Bins = () => {
                 <X className="w-5 h-5 text-muted-foreground" />
               </button>
             </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Select a bin type to swap with {binTypes.find((b) => b.key === selectedBin)?.label}
+            </p>
             <div className="grid grid-cols-3 gap-3">
               {binTypes
                 .filter((b) => b.key !== selectedBin)
-                .map((bin) => (
-                  <button
-                    key={bin.key}
-                    onClick={() => handleSwapSelect(bin.key)}
-                    className={`${bin.bgColor} p-4 rounded-2xl flex flex-col items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all`}
-                  >
-                    <span className="text-2xl">{bin.icon}</span>
-                    <span className="text-xs font-medium text-center">{bin.label}</span>
-                  </button>
-                ))}
+                .map((bin) => {
+                  const IconComponent = bin.icon;
+                  return (
+                    <button
+                      key={bin.key}
+                      onClick={() => handleSwapSelect(bin.key)}
+                      className={`${bin.bgColor} p-4 rounded-2xl flex flex-col items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all`}
+                    >
+                      <IconComponent className="w-6 h-6 text-foreground/70" />
+                      <span className="text-xs font-medium text-center text-foreground">{bin.label}</span>
+                    </button>
+                  );
+                })}
             </div>
           </div>
         </div>
@@ -191,13 +229,13 @@ const Bins = () => {
 
       {/* Confirm Modal */}
       {confirmModalOpen && (
-        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-[60] flex items-center justify-center p-6">
           <div className="bg-card w-full max-w-sm rounded-3xl p-6 animate-scale-in">
             <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <ArrowLeftRight className="w-8 h-8 text-primary" />
+              <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ArrowLeftRight className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="text-xl font-bold text-foreground mb-2">Confirm Swap</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Confirm Swap</h3>
               <p className="text-muted-foreground text-sm">
                 Swap {binTypes.find((b) => b.key === selectedBin)?.label} with{" "}
                 {binTypes.find((b) => b.key === swapTarget)?.label}?

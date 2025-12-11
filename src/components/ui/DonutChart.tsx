@@ -6,7 +6,7 @@ interface DonutChartProps {
   size?: number;
   strokeWidth?: number;
   label: string;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   className?: string;
 }
 
@@ -55,13 +55,15 @@ export const DonutChart = ({
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-xl font-bold text-foreground">{percentage}%</span>
+          <span className="text-lg font-semibold text-foreground">{percentage}%</span>
         </div>
       </div>
-      <div className="flex items-center gap-1.5">
-        <span className="text-lg">{icon}</span>
-        <span className="text-sm font-medium text-muted-foreground">{label}</span>
-      </div>
+      {label && (
+        <div className="flex items-center gap-1.5">
+          {icon && <span className="text-lg">{icon}</span>}
+          <span className="text-xs font-medium text-muted-foreground text-center">{label}</span>
+        </div>
+      )}
     </div>
   );
 };

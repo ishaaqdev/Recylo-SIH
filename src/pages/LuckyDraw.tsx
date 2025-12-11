@@ -154,7 +154,7 @@ const LuckyDraw = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-28 px-5 pt-8">
+    <div className="min-h-screen bg-background pb-20 px-5 pt-8">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6 animate-fade-up">
         <Link
@@ -163,17 +163,19 @@ const LuckyDraw = () => {
         >
           <ArrowLeft className="w-5 h-5 text-foreground" />
         </Link>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Lucky Draws</h1>
-          <p className="text-sm text-muted-foreground">Win amazing prizes</p>
-        </div>
-      </div>
-
-      {/* Points Balance */}
-      <div className="bg-card rounded-2xl p-4 mb-6 border border-border/30 animate-fade-up">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Your Points</span>
-          <span className="text-xl font-bold text-foreground">{userPoints.toLocaleString()}</span>
+        <div className="flex-1">
+          <div className="bg-primary rounded-2xl p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-lg font-semibold text-primary-foreground">Lucky Draws</h1>
+                <p className="text-sm text-primary-foreground/80">Win amazing prizes</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-primary-foreground/70">Your Points</p>
+                <p className="text-lg font-bold text-primary-foreground">{userPoints.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -244,7 +246,7 @@ const LuckyDraw = () => {
 
       {/* Confirmation Modal */}
       {showConfirm && (
-        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-[60] flex items-center justify-center p-6">
           <div className="bg-card w-full max-w-sm rounded-3xl p-8 animate-scale-in text-center">
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="w-8 h-8 text-primary" />

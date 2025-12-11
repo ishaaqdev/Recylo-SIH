@@ -89,7 +89,7 @@ const Home = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-28 px-5 pt-8">
+    <div className="min-h-screen bg-background pb-20 px-5 pt-8">
       {/* Header */}
       <div className="flex items-start justify-between mb-6 animate-fade-up">
         <div>

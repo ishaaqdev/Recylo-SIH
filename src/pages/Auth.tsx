@@ -66,7 +66,7 @@ const Auth = () => {
 
         const redirectUrl = `${window.location.origin}/`;
 
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
           options: {
@@ -79,18 +79,20 @@ const Auth = () => {
           },
         });
 
-        if (error) throw error;
 
-        // Create household entry with location data
-        await supabase.from("households").insert({
-          name: formData.name,
-          phone: formData.phone,
-          address: formData.address,
-          state: formData.state || "Odisha",
-          district: formData.district || "Khordha",
-          pincode: formData.pincode || "751024",
-          qr_code: `RECYLO-${Date.now().toString(36).toUpperCase()}`,
-        });
+        // Create household entry with location data and user_id
+        if (data.user) {
+          await supabase.from("households").insert({
+            user_id: data.user.id,
+            name: formData.name,
+            phone: formData.phone,
+            address: formData.address,
+            state: formData.state || "Odisha",
+            district: formData.district || "Khordha",
+            pincode: formData.pincode || "751024",
+            qr_code: `RECYLO-${Date.now().toString(36).toUpperCase()}`,
+          });
+        }
 
         toast({
           title: "Account created",

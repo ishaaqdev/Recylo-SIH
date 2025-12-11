@@ -94,6 +94,32 @@ const Home = () => {
     fetchData();
   }, []);
 
+  // Real-time subscription for household updates
+  useEffect(() => {
+    if (!household?.id) return;
+
+    const channel = supabase
+      .channel('home-household-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'households',
+          filter: `id=eq.${household.id}`
+        },
+        (payload) => {
+          console.log('Household updated:', payload);
+          setHousehold(prev => prev ? { ...prev, ...payload.new } : null);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [household?.id]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background pb-24 px-5 pt-6">

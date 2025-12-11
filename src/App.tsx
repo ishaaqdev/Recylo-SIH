@@ -30,6 +30,8 @@ import MunicipalDrivers from "./pages/municipal/MunicipalDrivers";
 import MunicipalTasks from "./pages/municipal/MunicipalTasks";
 import MunicipalHazards from "./pages/municipal/MunicipalHazards";
 import MunicipalSettings from "./pages/municipal/MunicipalSettings";
+import MunicipalRecycling from "./pages/municipal/MunicipalRecycling";
+import MunicipalPincode from "./pages/municipal/MunicipalPincode";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +56,8 @@ const App = () => (
             <Route path="drivers" element={<MunicipalDrivers />} />
             <Route path="tasks" element={<MunicipalTasks />} />
             <Route path="hazards" element={<MunicipalHazards />} />
+            <Route path="recycling" element={<MunicipalRecycling />} />
+            <Route path="pincode" element={<MunicipalPincode />} />
             <Route path="settings" element={<MunicipalSettings />} />
           </Route>
           {/* Driver App Routes */}

@@ -75,8 +75,9 @@ const Rewards = () => {
   useEffect(() => {
     if (!household?.id) return;
 
-    const channel = supabase
-      .channel('rewards-realtime')
+    // Subscribe to household updates for real-time points/level changes
+    const householdChannel = supabase
+      .channel('rewards-household-updates')
       .on(
         'postgres_changes',
         {
@@ -85,25 +86,59 @@ const Rewards = () => {
           table: 'households',
           filter: `id=eq.${household.id}`
         },
-        (payload) => {
-          console.log('Household updated:', payload);
+        (payload: any) => {
+          console.log('Household updated on rewards:', payload);
+          const oldLevel = household.level;
+          const newLevel = payload.new.level;
+          
           setHousehold(prev => prev ? { ...prev, ...payload.new } : null);
+          
+          // Show toast when level advances from collection
+          if (newLevel > oldLevel) {
+            toast({
+              title: "Level Up!",
+              description: `You advanced from Level ${oldLevel} to Level ${newLevel}!`,
+            });
+          }
         }
       )
+      .subscribe();
+
+    // Subscribe to collection logs for real-time notification
+    const collectionChannel = supabase
+      .channel('rewards-collection-logs')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'task_completions',
-          filter: `household_id=eq.${household.id}`
+          table: 'collection_logs'
+        },
+        (payload: any) => {
+          console.log('Collection log on rewards:', payload);
+          if (payload.new.household_id === household.id && payload.new.segregation_status === 'pass') {
+            // Refetch household data after a small delay
+            setTimeout(fetchData, 500);
+          }
+        }
+      )
+      .subscribe();
+
+    const taskChannel = supabase
+      .channel('rewards-task-completions')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'task_completions'
         },
         (payload: any) => {
           console.log('Task completion verified by driver:', payload);
-          // Find the task that was completed
+          if (payload.new.household_id !== household.id) return;
+          
           const completedTask = tasks.find(t => t.id === payload.new.task_id);
           if (completedTask) {
-            // Close QR modal and show congrats
             setShowQRModal(false);
             setPendingCompleteTask(null);
             setSelectedTask(completedTask);
@@ -114,11 +149,9 @@ const Rewards = () => {
             });
             setShowCongrats(true);
             
-            // Remove from active tasks
             const newActiveTasks = activeTasks.filter(t => t.id !== completedTask.id);
             saveActiveTasks(newActiveTasks);
             
-            // Refresh household data to get updated points/level
             fetchData();
           }
         }
@@ -128,16 +161,15 @@ const Rewards = () => {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'user_tasks',
-          filter: `household_id=eq.${household.id}`
+          table: 'user_tasks'
         },
         (payload: any) => {
           console.log('Task status updated:', payload);
+          if (payload.new.household_id !== household.id) return;
+          
           if (payload.new.status === 'completed') {
-            // Find the task that was completed
             const completedTask = tasks.find(t => t.id === payload.new.task_id);
             if (completedTask) {
-              // Close QR modal and show congrats
               setShowQRModal(false);
               setPendingCompleteTask(null);
               setSelectedTask(completedTask);
@@ -148,7 +180,6 @@ const Rewards = () => {
               });
               setShowCongrats(true);
               
-              // Remove from active tasks
               const newActiveTasks = activeTasks.filter(t => t.id !== completedTask.id);
               saveActiveTasks(newActiveTasks);
             }
@@ -160,11 +191,12 @@ const Rewards = () => {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'user_tasks',
-          filter: `household_id=eq.${household.id}`
+          table: 'user_tasks'
         },
         (payload: any) => {
           console.log('Task updated:', payload);
+          if (payload.new.household_id !== household.id) return;
+          
           if (payload.new.status === 'completed') {
             const completedTask = tasks.find(t => t.id === payload.new.task_id);
             if (completedTask) {
@@ -187,9 +219,11 @@ const Rewards = () => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(householdChannel);
+      supabase.removeChannel(collectionChannel);
+      supabase.removeChannel(taskChannel);
     };
-  }, [household?.id, tasks, activeTasks]);
+  }, [household?.id, household?.level, tasks, activeTasks]);
 
   const loadActiveTasks = () => {
     const stored = localStorage.getItem(ACTIVE_TASKS_KEY);

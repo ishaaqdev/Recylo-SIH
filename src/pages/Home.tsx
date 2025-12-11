@@ -7,6 +7,7 @@ import { ComplaintCard } from "@/components/home/ComplaintCard";
 import { NotificationSheet } from "@/components/home/NotificationSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/hooks/use-toast";
 
 interface Household {
   id: string;
@@ -94,11 +95,12 @@ const Home = () => {
     fetchData();
   }, []);
 
-  // Real-time subscription for household updates
+  // Real-time subscription for household updates and collection logs
   useEffect(() => {
     if (!household?.id) return;
 
-    const channel = supabase
+    // Subscribe to household updates
+    const householdChannel = supabase
       .channel('home-household-updates')
       .on(
         'postgres_changes',
@@ -108,38 +110,67 @@ const Home = () => {
           table: 'households',
           filter: `id=eq.${household.id}`
         },
-        (payload) => {
-          console.log('Household updated:', payload);
-          setHousehold(prev => prev ? { ...prev, ...payload.new } : null);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'collection_logs',
-          filter: `household_id=eq.${household.id}`
-        },
         (payload: any) => {
-          console.log('New collection logged:', payload);
-          // Show notification via toast when collection is confirmed
-          if (payload.new.segregation_status === 'pass') {
-            import('@/hooks/use-toast').then(({ toast }) => {
-              toast({
-                title: "Collection Complete! 🎉",
-                description: `You earned 10 points and advanced to level ${(household?.level || 0) + 1}!`,
-              });
+          console.log('Household updated:', payload);
+          const oldLevel = household.level;
+          const newLevel = payload.new.level;
+          const newPoints = payload.new.points;
+          
+          setHousehold(prev => prev ? { ...prev, ...payload.new } : null);
+          
+          // Show toast notification when points/level updated
+          if (newLevel > oldLevel || newPoints > household.points) {
+            toast({
+              title: "Collection Complete!",
+              description: `You earned 10 points and advanced from Level ${oldLevel} to Level ${newLevel}!`,
             });
           }
         }
       )
       .subscribe();
 
+    // Subscribe to collection logs for immediate notification
+    const collectionChannel = supabase
+      .channel('home-collection-logs')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'collection_logs'
+        },
+        (payload: any) => {
+          console.log('New collection logged:', payload);
+          // Check if this collection is for the current household
+          if (payload.new.household_id === household.id && payload.new.segregation_status === 'pass') {
+            // Refetch household data to get updated points/level
+            const refetchHousehold = async () => {
+              const { data } = await supabase
+                .from("households")
+                .select("*")
+                .eq("id", household.id)
+                .maybeSingle();
+              if (data) {
+                const oldLevel = household.level;
+                setHousehold(data);
+                toast({
+                  title: "Collection Complete!",
+                  description: `You earned 10 points and advanced from Level ${oldLevel} to Level ${data.level}!`,
+                });
+              }
+            };
+            // Small delay to ensure DB update is complete
+            setTimeout(refetchHousehold, 500);
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(householdChannel);
+      supabase.removeChannel(collectionChannel);
     };
-  }, [household?.id]);
+  }, [household?.id, household?.level, household?.points]);
 
   if (loading) {
     return (

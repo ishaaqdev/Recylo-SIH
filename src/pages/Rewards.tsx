@@ -95,11 +95,44 @@ const Rewards = () => {
         {
           event: 'INSERT',
           schema: 'public',
+          table: 'task_completions',
+          filter: `household_id=eq.${household.id}`
+        },
+        (payload: any) => {
+          console.log('Task completion verified by driver:', payload);
+          // Find the task that was completed
+          const completedTask = tasks.find(t => t.id === payload.new.task_id);
+          if (completedTask) {
+            // Close QR modal and show congrats
+            setShowQRModal(false);
+            setPendingCompleteTask(null);
+            setSelectedTask(completedTask);
+            setCompletedTaskInfo({
+              taskId: completedTask.id,
+              pointsAwarded: payload.new.points_awarded || completedTask.points_reward,
+              levelAwarded: payload.new.level_awarded || completedTask.level_reward
+            });
+            setShowCongrats(true);
+            
+            // Remove from active tasks
+            const newActiveTasks = activeTasks.filter(t => t.id !== completedTask.id);
+            saveActiveTasks(newActiveTasks);
+            
+            // Refresh household data to get updated points/level
+            fetchData();
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
           table: 'user_tasks',
           filter: `household_id=eq.${household.id}`
         },
         (payload: any) => {
-          console.log('Task completed:', payload);
+          console.log('Task status updated:', payload);
           if (payload.new.status === 'completed') {
             // Find the task that was completed
             const completedTask = tasks.find(t => t.id === payload.new.task_id);

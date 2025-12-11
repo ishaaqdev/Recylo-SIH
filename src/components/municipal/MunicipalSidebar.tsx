@@ -14,6 +14,8 @@ import {
   ChevronRight,
   Building2,
   Shield,
+  Recycle,
+  MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,6 +29,8 @@ const menuItems = [
   { icon: Users, label: "Drivers", path: "/municipal/drivers" },
   { icon: ClipboardList, label: "Tasks", path: "/municipal/tasks" },
   { icon: Shield, label: "Hazards", path: "/municipal/hazards" },
+  { icon: Recycle, label: "Recycling", path: "/municipal/recycling" },
+  { icon: MapPin, label: "Pincode", path: "/municipal/pincode" },
   { icon: Settings, label: "Settings", path: "/municipal/settings" },
 ];
 

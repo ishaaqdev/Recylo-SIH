@@ -17,30 +17,42 @@ export type Database = {
       bins: {
         Row: {
           hazardous: number
+          hazardous_weight: number
           household_id: string | null
           id: string
           last_updated: string
           non_recyclable: number
+          non_recyclable_weight: number
           organic: number
+          organic_weight: number
           recyclable: number
+          recyclable_weight: number
         }
         Insert: {
           hazardous?: number
+          hazardous_weight?: number
           household_id?: string | null
           id?: string
           last_updated?: string
           non_recyclable?: number
+          non_recyclable_weight?: number
           organic?: number
+          organic_weight?: number
           recyclable?: number
+          recyclable_weight?: number
         }
         Update: {
           hazardous?: number
+          hazardous_weight?: number
           household_id?: string | null
           id?: string
           last_updated?: string
           non_recyclable?: number
+          non_recyclable_weight?: number
           organic?: number
+          organic_weight?: number
           recyclable?: number
+          recyclable_weight?: number
         }
         Relationships: [
           {
@@ -510,6 +522,47 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "rewards_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trash_detections: {
+        Row: {
+          bin_levels: Json | null
+          bin_weights: Json | null
+          class: string
+          detected_at: string
+          household_id: string | null
+          id: string
+          subclass: string | null
+          weight_kg: number
+        }
+        Insert: {
+          bin_levels?: Json | null
+          bin_weights?: Json | null
+          class: string
+          detected_at?: string
+          household_id?: string | null
+          id?: string
+          subclass?: string | null
+          weight_kg?: number
+        }
+        Update: {
+          bin_levels?: Json | null
+          bin_weights?: Json | null
+          class?: string
+          detected_at?: string
+          household_id?: string | null
+          id?: string
+          subclass?: string | null
+          weight_kg?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trash_detections_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
             referencedColumns: ["id"]
           },
         ]

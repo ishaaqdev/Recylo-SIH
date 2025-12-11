@@ -226,16 +226,23 @@ const DriverHome = () => {
     }
   };
 
-  const handleCollected = async () => {
+  const handleCollected = async (segregationStatus: "pass" | "mixed" = "pass") => {
     if (!foundHousehold) return;
     
     try {
-      await createCollectionLog(foundHousehold.id);
+      await createCollectionLog(foundHousehold.id, undefined, segregationStatus);
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
         setFoundHousehold(null);
       }, 2000);
+      
+      if (segregationStatus === "pass") {
+        toast({
+          title: "Points Awarded",
+          description: "Household earned 10 points for proper segregation!",
+        });
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -245,8 +252,19 @@ const DriverHome = () => {
     }
   };
 
-  const handleNotCollected = () => {
-    setShowReject(true);
+  const handleNotCollected = async () => {
+    if (!foundHousehold) return;
+    
+    try {
+      await createCollectionLog(foundHousehold.id, undefined, "mixed");
+      setShowReject(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to log collection",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -325,19 +343,28 @@ const DriverHome = () => {
 
             <div className="space-y-3">
               <Button
-                onClick={handleCollected}
+                onClick={() => handleCollected("pass")}
                 className="w-full h-16 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-lg font-semibold shadow-lg shadow-emerald-200"
               >
                 <Check className="w-6 h-6 mr-3" />
-                COLLECTED
+                COLLECTED (Proper)
+              </Button>
+              
+              <Button
+                onClick={() => handleCollected("mixed")}
+                variant="outline"
+                className="w-full h-16 rounded-2xl border-2 border-amber-200 text-amber-600 hover:bg-amber-50 text-lg font-semibold"
+              >
+                <Check className="w-6 h-6 mr-3" />
+                COLLECTED (Mixed)
               </Button>
               
               <Button
                 onClick={handleNotCollected}
                 variant="outline"
-                className="w-full h-16 rounded-2xl border-2 border-red-200 text-red-600 hover:bg-red-50 text-lg font-semibold"
+                className="w-full h-14 rounded-2xl border-2 border-red-200 text-red-600 hover:bg-red-50 text-base font-semibold"
               >
-                <X className="w-6 h-6 mr-3" />
+                <X className="w-5 h-5 mr-2" />
                 NOT COLLECTED
               </Button>
             </div>

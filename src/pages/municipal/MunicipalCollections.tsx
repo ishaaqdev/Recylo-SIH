@@ -78,7 +78,29 @@ const MunicipalCollections = () => {
 
   useEffect(() => {
     fetchCollections();
+
+    // Subscribe to realtime updates for new collections
+    const channel = supabase
+      .channel('collections-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'collection_logs'
+        },
+        (payload) => {
+          console.log('New collection:', payload);
+          fetchCollections(); // Refresh data when new collection is logged
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
+
 
   useEffect(() => {
     applyFilters();

@@ -18,7 +18,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ClipboardList, Play, CheckCircle, TrendingUp, Filter } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ClipboardList, Play, CheckCircle, TrendingUp, Filter, User, Truck } from "lucide-react";
 import StatCard from "@/components/municipal/StatCard";
 import {
   LineChart,
@@ -43,9 +44,23 @@ interface Task {
   completedCount: number;
 }
 
+interface TaskCompletion {
+  id: string;
+  task_id: string | null;
+  household_id: string | null;
+  driver_id: string | null;
+  points_awarded: number;
+  level_awarded: number;
+  completed_at: string;
+  task?: { title: string } | null;
+  household?: { name: string; phone: string | null; district: string | null } | null;
+  driver?: { name: string; driver_id: string } | null;
+}
+
 const MunicipalTasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
+  const [taskCompletions, setTaskCompletions] = useState<TaskCompletion[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [districts, setDistricts] = useState<string[]>([]);
@@ -69,10 +84,12 @@ const MunicipalTasks = () => {
 
   useEffect(() => {
     fetchDistricts();
+    fetchTaskCompletions();
   }, []);
 
   useEffect(() => {
     fetchTasks();
+    fetchTaskCompletions();
   }, [selectedDistrict]);
 
   useEffect(() => {
@@ -92,6 +109,35 @@ const MunicipalTasks = () => {
     if (data) {
       const uniqueDistricts = [...new Set(data.map((h: any) => h.district))].filter(Boolean);
       setDistricts(uniqueDistricts as string[]);
+    }
+  };
+
+  const fetchTaskCompletions = async () => {
+    let query = supabase
+      .from("task_completions")
+      .select(`
+        *,
+        task:rewards_tasks(title),
+        household:households(name, phone, district),
+        driver:drivers(name, driver_id)
+      `)
+      .order("completed_at", { ascending: false })
+      .limit(100);
+
+    if (selectedDistrict !== "all") {
+      const { data: householdsData } = await supabase
+        .from("households")
+        .select("id")
+        .eq("district", selectedDistrict);
+      const householdIds = householdsData?.map((h: any) => h.id) || [];
+      if (householdIds.length > 0) {
+        query = query.in("household_id", householdIds);
+      }
+    }
+
+    const { data, error } = await query;
+    if (!error && data) {
+      setTaskCompletions(data as any);
     }
   };
 
@@ -253,80 +299,164 @@ const MunicipalTasks = () => {
         </CardContent>
       </Card>
 
-      {/* Search and Table */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Available Tasks</CardTitle>
-          <Input
-            placeholder="Search tasks..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-xs"
-          />
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Task Title</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Points</TableHead>
-                <TableHead>Level Reward</TableHead>
-                <TableHead>Started</TableHead>
-                <TableHead>Completed</TableHead>
-                <TableHead>Completion Rate</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
-                    Loading...
-                  </TableCell>
-                </TableRow>
-              ) : filteredTasks.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    No tasks available
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredTasks.map((task) => (
-                  <TableRow key={task.id}>
-                    <TableCell className="font-medium">{task.title}</TableCell>
-                    <TableCell className="max-w-[200px] truncate text-muted-foreground">
-                      {task.description || "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="default">{task.points_reward} pts</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">+{task.level_reward} level</Badge>
-                    </TableCell>
-                    <TableCell>{task.startedCount}</TableCell>
-                    <TableCell>{task.completedCount}</TableCell>
-                    <TableCell>
-                      <Badge
-                        className={
-                          task.startedCount > 0
-                            ? Math.round((task.completedCount / task.startedCount) * 100) >= 50
-                              ? "bg-green-100 text-green-700"
-                              : "bg-amber-100 text-amber-700"
-                            : "bg-slate-100 text-slate-700"
-                        }
-                      >
-                        {task.startedCount > 0
-                          ? `${Math.round((task.completedCount / task.startedCount) * 100)}%`
-                          : "N/A"}
-                      </Badge>
-                    </TableCell>
+      {/* Tabs for Tasks and Completions */}
+      <Tabs defaultValue="tasks" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="tasks">Available Tasks</TabsTrigger>
+          <TabsTrigger value="completions">Verified Completions</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="tasks">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Available Tasks</CardTitle>
+              <Input
+                placeholder="Search tasks..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-xs"
+              />
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Task Title</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Points</TableHead>
+                    <TableHead>Level Reward</TableHead>
+                    <TableHead>Started</TableHead>
+                    <TableHead>Completed</TableHead>
+                    <TableHead>Completion Rate</TableHead>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        Loading...
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredTasks.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        No tasks available
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredTasks.map((task) => (
+                      <TableRow key={task.id}>
+                        <TableCell className="font-medium">{task.title}</TableCell>
+                        <TableCell className="max-w-[200px] truncate text-muted-foreground">
+                          {task.description || "-"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="default">{task.points_reward} pts</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">+{task.level_reward} level</Badge>
+                        </TableCell>
+                        <TableCell>{task.startedCount}</TableCell>
+                        <TableCell>{task.completedCount}</TableCell>
+                        <TableCell>
+                          <Badge
+                            className={
+                              task.startedCount > 0
+                                ? Math.round((task.completedCount / task.startedCount) * 100) >= 50
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-amber-100 text-amber-700"
+                                : "bg-slate-100 text-slate-700"
+                            }
+                          >
+                            {task.startedCount > 0
+                              ? `${Math.round((task.completedCount / task.startedCount) * 100)}%`
+                              : "N/A"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="completions">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-500" />
+                Driver-Verified Task Completions
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Task</TableHead>
+                    <TableHead>Household</TableHead>
+                    <TableHead>Driver</TableHead>
+                    <TableHead>Points</TableHead>
+                    <TableHead>Level</TableHead>
+                    <TableHead>Verified At</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {taskCompletions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        No verified task completions yet
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    taskCompletions.map((completion) => (
+                      <TableRow key={completion.id}>
+                        <TableCell className="font-medium">
+                          {completion.task?.title || "Unknown Task"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-muted-foreground" />
+                            <div>
+                              <p className="font-medium">{completion.household?.name || "Unknown"}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {completion.household?.district || "-"}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Truck className="w-4 h-4 text-muted-foreground" />
+                            <div>
+                              <p className="font-medium">{completion.driver?.name || "Unknown"}</p>
+                              <p className="text-xs text-muted-foreground font-mono">
+                                {completion.driver?.driver_id || "-"}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className="bg-green-100 text-green-700">
+                            +{completion.points_awarded} pts
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">+{completion.level_awarded} lvl</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {new Date(completion.completed_at).toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

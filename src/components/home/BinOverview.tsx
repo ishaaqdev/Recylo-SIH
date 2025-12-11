@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { DonutChart } from "@/components/ui/DonutChart";
-import { X, Clock } from "lucide-react";
+import { X, Clock, Leaf, Recycle, Trash2, AlertTriangle } from "lucide-react";
 
 interface BinData {
   organic: number;
@@ -14,43 +14,76 @@ interface BinOverviewProps {
   binData: BinData;
 }
 
-// Mock weight data (in kg) - in real app, this would come from the database
+interface BinConversion {
+  from: string;
+  to: string;
+}
+
+const BIN_CONVERSIONS_KEY = "recylo_bin_conversions";
+
+const binTypeConfig = [
+  { key: "organic", label: "Organic", color: "hsl(var(--organic))", icon: Leaf },
+  { key: "recyclable", label: "Recyclable", color: "hsl(var(--recyclable))", icon: Recycle },
+  { key: "non_recyclable", label: "Non-Recyclable", color: "hsl(var(--non-recyclable))", icon: Trash2 },
+  { key: "hazardous", label: "Hazardous", color: "hsl(var(--hazardous))", icon: AlertTriangle },
+];
+
 const getWeightFromPercentage = (percentage: number) => {
-  const maxCapacity = 10; // 10 kg max capacity per bin
+  const maxCapacity = 10;
   return ((percentage / 100) * maxCapacity).toFixed(1);
 };
 
 export const BinOverview = ({ binData }: BinOverviewProps) => {
   const [selectedBin, setSelectedBin] = useState<string | null>(null);
+  const [conversions, setConversions] = useState<BinConversion[]>([]);
 
-  const bins = [
-    {
-      label: "Organic",
-      percentage: binData.organic,
-      color: "hsl(var(--organic))",
-      lastDeposit: "2 hours ago",
-    },
-    {
-      label: "Recyclable",
-      percentage: binData.recyclable,
-      color: "hsl(var(--recyclable))",
-      lastDeposit: "5 hours ago",
-    },
-    {
-      label: "Non-Recyclable",
-      percentage: binData.non_recyclable,
-      color: "hsl(var(--non-recyclable))",
-      lastDeposit: "1 day ago",
-    },
-    {
-      label: "Hazardous",
-      percentage: binData.hazardous,
-      color: "hsl(var(--hazardous))",
-      lastDeposit: "3 days ago",
-    },
-  ];
+  useEffect(() => {
+    const loadConversions = () => {
+      const stored = localStorage.getItem(BIN_CONVERSIONS_KEY);
+      if (stored) {
+        setConversions(JSON.parse(stored));
+      } else {
+        setConversions([]);
+      }
+    };
 
-  const selectedBinData = bins.find((bin) => bin.label === selectedBin);
+    loadConversions();
+
+    // Listen for custom event (same tab) and storage event (other tabs)
+    const handleConversionUpdate = () => loadConversions();
+    
+    window.addEventListener("binConversionsUpdated", handleConversionUpdate);
+    window.addEventListener("storage", handleConversionUpdate);
+    
+    return () => {
+      window.removeEventListener("binConversionsUpdated", handleConversionUpdate);
+      window.removeEventListener("storage", handleConversionUpdate);
+    };
+  }, []);
+
+  const getDisplayType = (binKey: string) => {
+    const conversion = conversions.find((c) => c.from === binKey);
+    if (conversion) {
+      return binTypeConfig.find((b) => b.key === conversion.to);
+    }
+    return binTypeConfig.find((b) => b.key === binKey);
+  };
+
+  const bins = binTypeConfig.map((binType) => {
+    const displayType = getDisplayType(binType.key);
+    return {
+      originalKey: binType.key,
+      label: displayType?.label || binType.label,
+      percentage: binData[binType.key as keyof BinData],
+      color: displayType?.color || binType.color,
+      icon: displayType?.icon || binType.icon,
+      lastDeposit: binType.key === "organic" ? "2 hours ago" : 
+                   binType.key === "recyclable" ? "5 hours ago" : 
+                   binType.key === "non_recyclable" ? "1 day ago" : "3 days ago",
+    };
+  });
+
+  const selectedBinData = bins.find((bin) => bin.originalKey === selectedBin);
 
   return (
     <div className="bg-card rounded-3xl p-5 premium-shadow animate-fade-up stagger-2">
@@ -69,8 +102,8 @@ export const BinOverview = ({ binData }: BinOverviewProps) => {
       <div className="grid grid-cols-2 gap-6">
         {bins.map((bin) => (
           <button
-            key={bin.label}
-            onClick={() => setSelectedBin(bin.label)}
+            key={bin.originalKey}
+            onClick={() => setSelectedBin(bin.originalKey)}
             className="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity"
           >
             <DonutChart
@@ -86,7 +119,10 @@ export const BinOverview = ({ binData }: BinOverviewProps) => {
 
       {/* Detail Modal */}
       {selectedBin && selectedBinData && (
-        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+        <div 
+          className="fixed inset-0 bg-foreground/20 backdrop-blur-sm flex items-center justify-center p-6"
+          style={{ zIndex: 9999 }}
+        >
           <div className="bg-card w-full max-w-sm rounded-2xl p-6 animate-scale-in">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-foreground">

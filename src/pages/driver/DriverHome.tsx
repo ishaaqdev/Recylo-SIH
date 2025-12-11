@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { QrCode, Check, X, Truck, Camera } from "lucide-react";
+import { QrCode, Check, X, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Html5Qrcode } from "html5-qrcode";
 import { getHouseholdByQRCode, createCollectionLog } from "@/lib/driverActions";
@@ -75,8 +75,9 @@ const DriverHome = () => {
         { facingMode: "environment" },
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0
+          qrbox: { width: 220, height: 220 },
+          aspectRatio: 1.0,
+          disableFlip: false
         },
         async (decodedText) => {
           try {
@@ -189,7 +190,7 @@ const DriverHome = () => {
                 onClick={startScanner}
                 className="w-full aspect-square rounded-3xl bg-sky-500 hover:bg-sky-600 text-white shadow-xl shadow-sky-200 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex flex-col items-center justify-center gap-4"
               >
-                <Camera className="w-20 h-20" />
+                <QrCode className="w-20 h-20" />
                 <span className="text-2xl font-bold">SCAN QR CODE</span>
               </button>
               
@@ -204,19 +205,20 @@ const DriverHome = () => {
             </div>
           )}
 
-          {/* QR Scanner View */}
+          {/* QR Scanner View - Mobile optimized */}
           {scanning && (
-            <div className="fixed inset-0 bg-black z-50 flex flex-col">
-              <div className="flex-1 relative">
-                <div id="qr-reader" className="w-full h-full" />
-              </div>
+            <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center">
               <Button
                 onClick={stopScanner}
-                className="absolute top-12 right-6 bg-white/20 backdrop-blur-sm rounded-xl"
+                className="absolute top-6 right-6 bg-white/20 backdrop-blur-sm rounded-xl z-10"
               >
                 <X className="w-6 h-6" />
               </Button>
-              <div className="absolute bottom-24 left-0 right-0 text-center text-white">
+              <div className="w-[85vw] max-w-[320px] aspect-square relative">
+                <div id="qr-reader" className="w-full h-full rounded-2xl overflow-hidden" />
+                <div className="absolute inset-0 border-4 border-white/30 rounded-2xl pointer-events-none" />
+              </div>
+              <div className="mt-8 text-center text-white">
                 <p className="text-lg font-medium">Point camera at QR code</p>
                 <p className="text-sm text-white/70 mt-1">Make sure QR code is well lit</p>
               </div>

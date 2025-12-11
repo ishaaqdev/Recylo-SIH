@@ -39,7 +39,7 @@ interface Complaint {
   created_at: string;
   resolved_at: string | null;
   household_id: string | null;
-  household?: { name: string; phone: string | null };
+  household?: { name: string; phone: string | null; district: string | null };
 }
 
 const MunicipalComplaints = () => {
@@ -48,9 +48,14 @@ const MunicipalComplaints = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [districtFilter, setDistrictFilter] = useState("all");
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState("");
   const { toast } = useToast();
+
+  const [districts, setDistricts] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
 
   const [stats, setStats] = useState({
     total: 0,
@@ -64,6 +69,10 @@ const MunicipalComplaints = () => {
   }, []);
 
   useEffect(() => {
+    applyFilters();
+  }, [searchTerm, statusFilter, categoryFilter, districtFilter, complaints]);
+
+  const applyFilters = () => {
     let filtered = complaints;
 
     if (searchTerm) {
@@ -79,21 +88,35 @@ const MunicipalComplaints = () => {
       filtered = filtered.filter((c) => c.status === statusFilter);
     }
 
+    if (categoryFilter !== "all") {
+      filtered = filtered.filter((c) => c.category === categoryFilter);
+    }
+
+    if (districtFilter !== "all") {
+      filtered = filtered.filter((c) => c.household?.district === districtFilter);
+    }
+
     setFilteredComplaints(filtered);
-  }, [searchTerm, statusFilter, complaints]);
+  };
 
   const fetchComplaints = async () => {
     const { data, error } = await supabase
       .from("complaints")
       .select(`
         *,
-        household:households(name, phone)
+        household:households(name, phone, district)
       `)
       .order("created_at", { ascending: false });
 
     if (!error && data) {
       setComplaints(data as any);
       setFilteredComplaints(data as any);
+
+      // Extract unique districts and categories
+      const uniqueDistricts = [...new Set(data.map((c: any) => c.household?.district).filter(Boolean))];
+      const uniqueCategories = [...new Set(data.map((c: any) => c.category))];
+      setDistricts(uniqueDistricts as string[]);
+      setCategories(uniqueCategories);
 
       setStats({
         total: data.length,
@@ -170,8 +193,8 @@ const MunicipalComplaints = () => {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <div className="relative flex-1">
+          <div className="flex flex-wrap gap-4">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search complaints..."
@@ -181,8 +204,8 @@ const MunicipalComplaints = () => {
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
@@ -191,6 +214,35 @@ const MunicipalComplaints = () => {
                 <SelectItem value="resolved">Resolved</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={districtFilter} onValueChange={setDistrictFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="District" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Districts</SelectItem>
+                {districts.map((district) => (
+                  <SelectItem key={district} value={district}>
+                    {district}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="mt-3 text-sm text-muted-foreground">
+            Showing {filteredComplaints.length} of {complaints.length} complaints
           </div>
         </CardContent>
       </Card>
@@ -203,6 +255,7 @@ const MunicipalComplaints = () => {
               <TableRow>
                 <TableHead>Category</TableHead>
                 <TableHead>Household</TableHead>
+                <TableHead>District</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
@@ -212,13 +265,13 @@ const MunicipalComplaints = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : filteredComplaints.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No complaints found
                   </TableCell>
                 </TableRow>
@@ -233,6 +286,9 @@ const MunicipalComplaints = () => {
                           {complaint.household?.phone || ""}
                         </p>
                       </div>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {complaint.household?.district || "-"}
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate">
                       {complaint.description || "-"}

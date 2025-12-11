@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Star, Clock, Gift, Lock, Check, ChevronRight, Ticket, RotateCw } from "lucide-react";
+import { Star, Clock, Gift, Lock, Check, Ticket, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,6 +27,25 @@ interface ActiveTask {
 }
 
 const ACTIVE_TASKS_KEY = "recylo_active_tasks";
+
+// Define special rewards for alternate levels
+const specialRewards: Record<number, { type: string; label: string }> = {
+  2: { type: "spin", label: "Free Spin" },
+  4: { type: "coupon", label: "Coupon" },
+  6: { type: "draw", label: "Lucky Draw" },
+  8: { type: "spin", label: "Free Spin" },
+  10: { type: "coupon", label: "Coupon" },
+  12: { type: "draw", label: "Lucky Draw" },
+  14: { type: "spin", label: "2x Spins" },
+  16: { type: "coupon", label: "Premium Coupon" },
+  18: { type: "draw", label: "Lucky Draw" },
+  20: { type: "spin", label: "3x Spins" },
+  22: { type: "coupon", label: "Super Coupon" },
+  24: { type: "draw", label: "Lucky Draw" },
+  26: { type: "spin", label: "5x Spins" },
+  28: { type: "coupon", label: "Mega Coupon" },
+  30: { type: "draw", label: "Grand Draw" },
+};
 
 const Rewards = () => {
   const [household, setHousehold] = useState<Household | null>(null);
@@ -141,9 +160,10 @@ const Rewards = () => {
     }
   };
 
-  const levels = Array.from({ length: 10 }, (_, i) => ({
+  // Generate 30 levels
+  const levels = Array.from({ length: 30 }, (_, i) => ({
     number: i + 1,
-    points: (i + 1) * 100,
+    points: (i + 1) * 50,
     status: household
       ? i + 1 < household.level
         ? "completed"
@@ -151,6 +171,7 @@ const Rewards = () => {
         ? "current"
         : "locked"
       : "locked",
+    specialReward: specialRewards[i + 1] || null,
   }));
 
   if (loading) {
@@ -271,35 +292,71 @@ const Rewards = () => {
         </div>
       </div>
 
-      {/* Levels */}
+      {/* Levels - 2 columns x 15 rows */}
       <div className="animate-fade-up stagger-2">
         <h3 className="font-semibold text-foreground mb-4">Level Progress</h3>
-        <div className="bg-card rounded-2xl p-4 border border-border/30">
-          <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-2">
-            {levels.map((level) => (
-              <div
-                key={level.number}
-                className={`flex-shrink-0 w-14 h-14 rounded-xl flex flex-col items-center justify-center ${
-                  level.status === "completed"
-                    ? "bg-emerald-100"
-                    : level.status === "current"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
-                }`}
-              >
-                {level.status === "completed" ? (
-                  <Check className="w-5 h-5 text-emerald-600" />
-                ) : level.status === "locked" ? (
-                  <Lock className="w-4 h-4 text-muted-foreground" />
-                ) : (
-                  <span className="text-lg font-bold">{level.number}</span>
-                )}
-                <span className={`text-[10px] ${level.status === "current" ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
-                  {level.points}
-                </span>
+        <div className="grid grid-cols-2 gap-3">
+          {levels.map((level) => (
+            <div
+              key={level.number}
+              className={`rounded-2xl p-4 border transition-all ${
+                level.status === "completed"
+                  ? "bg-emerald-50 border-emerald-200"
+                  : level.status === "current"
+                  ? "bg-primary/10 border-primary/30"
+                  : "bg-card border-border/30"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  {level.status === "completed" ? (
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                      <Check className="w-4 h-4 text-emerald-600" />
+                    </div>
+                  ) : level.status === "current" ? (
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                      <span className="text-sm font-bold text-primary-foreground">{level.number}</span>
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                      <Lock className="w-3 h-3 text-muted-foreground" />
+                    </div>
+                  )}
+                  <span className={`text-lg font-bold ${
+                    level.status === "completed" 
+                      ? "text-emerald-700" 
+                      : level.status === "current" 
+                      ? "text-primary" 
+                      : "text-muted-foreground"
+                  }`}>
+                    Level {level.number}
+                  </span>
+                </div>
               </div>
-            ))}
-          </div>
+              <div className="flex items-center justify-between">
+                <span className={`text-xs ${
+                  level.status === "completed" 
+                    ? "text-emerald-600" 
+                    : level.status === "current" 
+                    ? "text-primary" 
+                    : "text-muted-foreground"
+                }`}>
+                  {level.points} pts
+                </span>
+                {level.specialReward && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    level.status === "completed"
+                      ? "bg-emerald-200 text-emerald-700"
+                      : level.status === "current"
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                  }`}>
+                    {level.specialReward.label}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

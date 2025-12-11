@@ -183,10 +183,8 @@ const SpinWheel = () => {
           <ArrowLeft className="w-5 h-5 text-foreground" />
         </Link>
         <div className="flex-1">
-          <div className="bg-primary rounded-2xl p-4">
-            <h1 className="text-lg font-semibold text-primary-foreground">Spin & Win</h1>
-            <p className="text-sm text-primary-foreground/80">Try your luck</p>
-          </div>
+          <h1 className="text-xl font-semibold text-foreground">Spin & Win</h1>
+          <p className="text-sm text-muted-foreground">Try your luck</p>
         </div>
       </div>
 

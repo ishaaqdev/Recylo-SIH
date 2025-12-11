@@ -12,6 +12,7 @@ import Rewards from "./pages/Rewards";
 import SpinWheel from "./pages/SpinWheel";
 import LuckyDraw from "./pages/LuckyDraw";
 import Coupons from "./pages/Coupons";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,20 +23,28 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <div className="max-w-md mx-auto bg-background min-h-screen relative">
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/bins" element={<Bins />} />
-            <Route path="/qr" element={<QRPage />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/rewards" element={<Rewards />} />
-            <Route path="/spinwheel" element={<SpinWheel />} />
-            <Route path="/luckydraw" element={<LuckyDraw />} />
-            <Route path="/coupons" element={<Coupons />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <BottomNav />
-        </div>
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+          <Route
+            path="*"
+            element={
+              <div className="max-w-md mx-auto bg-background min-h-screen relative">
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/bins" element={<Bins />} />
+                  <Route path="/qr" element={<QRPage />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/rewards" element={<Rewards />} />
+                  <Route path="/spinwheel" element={<SpinWheel />} />
+                  <Route path="/luckydraw" element={<LuckyDraw />} />
+                  <Route path="/coupons" element={<Coupons />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <BottomNav />
+              </div>
+            }
+          />
+        </Routes>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

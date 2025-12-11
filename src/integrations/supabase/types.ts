@@ -459,6 +459,58 @@ export type Database = {
         }
         Relationships: []
       }
+      task_completions: {
+        Row: {
+          completed_at: string
+          driver_id: string | null
+          household_id: string | null
+          id: string
+          level_awarded: number
+          points_awarded: number
+          task_id: string | null
+        }
+        Insert: {
+          completed_at?: string
+          driver_id?: string | null
+          household_id?: string | null
+          id?: string
+          level_awarded?: number
+          points_awarded?: number
+          task_id?: string | null
+        }
+        Update: {
+          completed_at?: string
+          driver_id?: string | null
+          household_id?: string | null
+          id?: string
+          level_awarded?: number
+          points_awarded?: number
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_completions_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_completions_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_completions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "rewards_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_tasks: {
         Row: {
           completed_at: string | null

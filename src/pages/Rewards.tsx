@@ -27,6 +27,12 @@ interface ActiveTask {
   startedAt: number;
 }
 
+interface CompletedTask {
+  taskId: string;
+  pointsAwarded: number;
+  levelAwarded: number;
+}
+
 const ACTIVE_TASKS_KEY = "recylo_active_tasks";
 
 // Define special rewards for alternate levels
@@ -58,11 +64,99 @@ const Rewards = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showQRModal, setShowQRModal] = useState(false);
   const [pendingCompleteTask, setPendingCompleteTask] = useState<Task | null>(null);
+  const [completedTaskInfo, setCompletedTaskInfo] = useState<CompletedTask | null>(null);
 
   useEffect(() => {
     fetchData();
     loadActiveTasks();
   }, []);
+
+  // Subscribe to real-time updates for household points/level and task completions
+  useEffect(() => {
+    if (!household?.id) return;
+
+    const channel = supabase
+      .channel('rewards-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'households',
+          filter: `id=eq.${household.id}`
+        },
+        (payload) => {
+          console.log('Household updated:', payload);
+          setHousehold(prev => prev ? { ...prev, ...payload.new } : null);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'user_tasks',
+          filter: `household_id=eq.${household.id}`
+        },
+        (payload: any) => {
+          console.log('Task completed:', payload);
+          if (payload.new.status === 'completed') {
+            // Find the task that was completed
+            const completedTask = tasks.find(t => t.id === payload.new.task_id);
+            if (completedTask) {
+              // Close QR modal and show congrats
+              setShowQRModal(false);
+              setPendingCompleteTask(null);
+              setSelectedTask(completedTask);
+              setCompletedTaskInfo({
+                taskId: completedTask.id,
+                pointsAwarded: completedTask.points_reward,
+                levelAwarded: completedTask.level_reward
+              });
+              setShowCongrats(true);
+              
+              // Remove from active tasks
+              const newActiveTasks = activeTasks.filter(t => t.id !== completedTask.id);
+              saveActiveTasks(newActiveTasks);
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'user_tasks',
+          filter: `household_id=eq.${household.id}`
+        },
+        (payload: any) => {
+          console.log('Task updated:', payload);
+          if (payload.new.status === 'completed') {
+            const completedTask = tasks.find(t => t.id === payload.new.task_id);
+            if (completedTask) {
+              setShowQRModal(false);
+              setPendingCompleteTask(null);
+              setSelectedTask(completedTask);
+              setCompletedTaskInfo({
+                taskId: completedTask.id,
+                pointsAwarded: completedTask.points_reward,
+                levelAwarded: completedTask.level_reward
+              });
+              setShowCongrats(true);
+              
+              const newActiveTasks = activeTasks.filter(t => t.id !== completedTask.id);
+              saveActiveTasks(newActiveTasks);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [household?.id, tasks, activeTasks]);
 
   const loadActiveTasks = () => {
     const stored = localStorage.getItem(ACTIVE_TASKS_KEY);
@@ -382,21 +476,23 @@ const Rewards = () => {
               <Check className="w-6 h-6 text-emerald-600" />
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-2">
-              Task Completed
+              Task Completed!
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              You earned {selectedTask.points_reward} points
-              {selectedTask.level_reward > 0 &&
-                ` and advanced ${selectedTask.level_reward} level`}
+              Driver verified your task! You earned {completedTaskInfo?.pointsAwarded || selectedTask.points_reward} points
+              {(completedTaskInfo?.levelAwarded || selectedTask.level_reward) > 0 &&
+                ` and advanced ${completedTaskInfo?.levelAwarded || selectedTask.level_reward} level`}
             </p>
             <Button
               onClick={() => {
                 setShowCongrats(false);
                 setSelectedTask(null);
+                setCompletedTaskInfo(null);
+                fetchData(); // Refresh data
               }}
               className="w-full rounded-xl h-11"
             >
-              Continue
+              Claim Reward
             </Button>
           </div>
         </div>

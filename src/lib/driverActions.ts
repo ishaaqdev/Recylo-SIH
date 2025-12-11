@@ -22,17 +22,53 @@ export const getHouseholdByQRCode = async (code: string) => {
   return data;
 };
 
-export const createCollectionLog = async (household_id: string) => {
+export const createCollectionLog = async (
+  household_id: string, 
+  driver_id?: string,
+  segregation_status: "pass" | "mixed" = "pass"
+) => {
+  // Get current session to identify driver
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  // Get driver info if logged in
+  let driverIdToUse = driver_id;
+  if (session?.user?.id && !driverIdToUse) {
+    const { data: driverData } = await supabase
+      .from("drivers")
+      .select("driver_id")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    driverIdToUse = driverData?.driver_id;
+  }
+
+  // Create collection log
   const { data, error } = await supabase
     .from("collection_logs")
     .insert({
       household_id,
       status: "collected",
+      driver_id: driverIdToUse || null,
+      segregation_status,
     })
     .select()
     .single();
   
   if (error) throw error;
+
+  // Award points and level to household for proper collection
+  if (segregation_status === "pass") {
+    const household = await getHouseholdById(household_id);
+    if (household) {
+      await supabase
+        .from("households")
+        .update({
+          points: household.points + 10,
+          level: household.level + (household.points + 10 >= household.level * 50 ? 1 : 0),
+        })
+        .eq("id", household_id);
+    }
+  }
+
   return data;
 };
 
@@ -84,6 +120,20 @@ export const confirmTaskCompletion = async (
   pointsReward: number,
   levelReward: number
 ) => {
+  // Get current session to identify driver
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  // Get driver info
+  let driverId: string | null = null;
+  if (session?.user?.id) {
+    const { data: driverData } = await supabase
+      .from("drivers")
+      .select("id")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    driverId = driverData?.id || null;
+  }
+
   // Get current household data
   const household = await getHouseholdById(householdId);
   if (!household) throw new Error("Household not found");
@@ -99,17 +149,38 @@ export const confirmTaskCompletion = async (
 
   if (updateError) throw updateError;
 
-  // Update or create user_tasks record
+  // Update user_tasks record to completed
   const { error: taskError } = await supabase
     .from("user_tasks")
-    .insert({
+    .upsert({
       task_id: taskId,
       household_id: householdId,
       status: "completed",
       completed_at: new Date().toISOString(),
-    });
+    }, { onConflict: 'task_id,household_id' });
 
-  if (taskError) throw taskError;
+  if (taskError) {
+    // If upsert fails, try insert
+    await supabase
+      .from("user_tasks")
+      .insert({
+        task_id: taskId,
+        household_id: householdId,
+        status: "completed",
+        completed_at: new Date().toISOString(),
+      });
+  }
+
+  // Log task completion with driver info
+  await supabase
+    .from("task_completions")
+    .insert({
+      task_id: taskId,
+      household_id: householdId,
+      driver_id: driverId,
+      points_awarded: pointsReward,
+      level_awarded: levelReward,
+    });
 
   return { success: true, pointsAwarded: pointsReward, levelAwarded: levelReward };
 };

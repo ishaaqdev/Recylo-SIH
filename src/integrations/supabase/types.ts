@@ -157,6 +157,33 @@ export type Database = {
           },
         ]
       }
+      drivers: {
+        Row: {
+          created_at: string
+          driver_id: string
+          id: string
+          name: string
+          phone: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          driver_id: string
+          id?: string
+          name: string
+          phone?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          driver_id?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ecofacts: {
         Row: {
           category: string | null

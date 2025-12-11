@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { QrCode, Check, X, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Html5Qrcode } from "html5-qrcode";
 import { getHouseholdByQRCode, createCollectionLog } from "@/lib/driverActions";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 interface Household {
@@ -12,33 +15,57 @@ interface Household {
 }
 
 const DriverHome = () => {
+  const navigate = useNavigate();
   const [scanning, setScanning] = useState(false);
   const [foundHousehold, setFoundHousehold] = useState<Household | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showReject, setShowReject] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [driverName, setDriverName] = useState("Driver");
+  const scannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
-    if (scanning) {
-      startCamera();
-    } else {
-      stopCamera();
-    }
-    return () => stopCamera();
-  }, [scanning]);
+    checkAuth();
+  }, []);
 
-  const startCamera = async () => {
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      navigate("/driver/auth");
+      return;
+    }
+    
+    const { data: driver } = await supabase
+      .from("drivers")
+      .select("name")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    
+    if (driver) {
+      setDriverName(driver.name);
+    }
+  };
+
+  const startScanner = async () => {
+    setScanning(true);
+    
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        // Start scanning for QR
-        scanForQR();
-      }
+      const html5QrCode = new Html5Qrcode("qr-reader");
+      scannerRef.current = html5QrCode;
+
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 }
+        },
+        async (decodedText) => {
+          await html5QrCode.stop();
+          scannerRef.current = null;
+          setScanning(false);
+          handleQRScanned(decodedText);
+        },
+        () => {}
+      );
     } catch (err) {
       toast({
         title: "Camera access denied",
@@ -49,43 +76,21 @@ const DriverHome = () => {
     }
   };
 
-  const stopCamera = () => {
-    if (videoRef.current?.srcObject) {
-      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-      tracks.forEach(track => track.stop());
+  const stopScanner = async () => {
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+      } catch (e) {}
+      scannerRef.current = null;
     }
+    setScanning(false);
   };
 
-  const scanForQR = () => {
-    if (!scanning) return;
-    
-    const checkQR = setInterval(async () => {
-      if (canvasRef.current && videoRef.current && videoRef.current.readyState === 4) {
-        const canvas = canvasRef.current;
-        const video = videoRef.current;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(video, 0, 0);
-          // For demo, we'll use manual input since browser QR scanning needs additional library
-        }
-      }
-    }, 500);
-
-    return () => clearInterval(checkQR);
-  };
-
-  const handleManualQRInput = async () => {
-    // For demo, prompt for QR code
-    const code = prompt("Enter QR Code (e.g., RECYLO-...):");
-    if (!code) return;
-    
+  const handleQRScanned = async (code: string) => {
     try {
       const household = await getHouseholdByQRCode(code);
       if (household) {
         setFoundHousehold(household);
-        setScanning(false);
       } else {
         toast({
           title: "Household not found",
@@ -134,7 +139,7 @@ const DriverHome = () => {
             <Truck className="w-6 h-6 text-sky-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Welcome, Driver 👋</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Welcome, {driverName}</h1>
             <p className="text-gray-500">Recylo Collection</p>
           </div>
         </div>
@@ -144,34 +149,28 @@ const DriverHome = () => {
       <div className="px-6 pt-12">
         <div className="flex flex-col items-center justify-center min-h-[50vh]">
           {!scanning && !foundHousehold && (
-            <Button
-              onClick={() => {
-                setScanning(true);
-                handleManualQRInput();
-              }}
-              className="w-full max-w-sm h-32 rounded-3xl bg-sky-500 hover:bg-sky-600 text-white shadow-xl shadow-sky-200 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+            <button
+              onClick={startScanner}
+              className="w-full max-w-sm aspect-square rounded-3xl bg-sky-500 hover:bg-sky-600 text-white shadow-xl shadow-sky-200 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex flex-col items-center justify-center gap-4"
             >
-              <div className="flex flex-col items-center gap-3">
-                <QrCode className="w-12 h-12" />
-                <span className="text-xl font-semibold">SCAN QR CODE</span>
-              </div>
-            </Button>
+              <QrCode className="w-20 h-20" />
+              <span className="text-2xl font-bold">SCAN QR CODE</span>
+            </button>
           )}
 
-          {/* Camera View */}
+          {/* QR Scanner View */}
           {scanning && (
             <div className="fixed inset-0 bg-black z-50">
-              <video ref={videoRef} className="w-full h-full object-cover" />
-              <canvas ref={canvasRef} className="hidden" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-64 h-64 border-4 border-white rounded-3xl" />
-              </div>
+              <div id="qr-reader" className="w-full h-full" />
               <Button
-                onClick={() => setScanning(false)}
-                className="absolute top-12 right-6 bg-white/20 backdrop-blur-sm"
+                onClick={stopScanner}
+                className="absolute top-12 right-6 bg-white/20 backdrop-blur-sm rounded-xl"
               >
                 <X className="w-6 h-6" />
               </Button>
+              <div className="absolute bottom-24 left-0 right-0 text-center text-white">
+                <p className="text-lg font-medium">Point camera at QR code</p>
+              </div>
             </div>
           )}
         </div>

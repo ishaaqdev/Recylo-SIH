@@ -306,6 +306,7 @@ export type Database = {
           state: string | null
           total_waste_recycled: number
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           address?: string | null
@@ -321,6 +322,7 @@ export type Database = {
           state?: string | null
           total_waste_recycled?: number
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           address?: string | null
@@ -336,6 +338,7 @@ export type Database = {
           state?: string | null
           total_waste_recycled?: number
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

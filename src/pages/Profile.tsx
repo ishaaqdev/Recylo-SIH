@@ -53,11 +53,30 @@ const Profile = () => {
 
   const fetchHousehold = async () => {
     try {
-      const { data } = await supabase
-        .from("households")
-        .select("*")
-        .limit(1)
-        .maybeSingle();
+      // Get current user session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      let data = null;
+      
+      if (session?.user?.id) {
+        // Fetch household by user_id
+        const { data: userHousehold } = await supabase
+          .from("households")
+          .select("*")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        data = userHousehold;
+      }
+      
+      // Fallback for backward compatibility
+      if (!data) {
+        const { data: fallbackData } = await supabase
+          .from("households")
+          .select("*")
+          .limit(1)
+          .maybeSingle();
+        data = fallbackData;
+      }
 
       if (data) {
         setHousehold(data);

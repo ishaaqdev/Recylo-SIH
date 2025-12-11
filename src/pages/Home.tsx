@@ -39,11 +39,30 @@ const Home = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: householdData } = await supabase
-          .from("households")
-          .select("*")
-          .limit(1)
-          .maybeSingle();
+        // Get current user session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        let householdData = null;
+        
+        if (session?.user?.id) {
+          // Fetch household by user_id
+          const { data } = await supabase
+            .from("households")
+            .select("*")
+            .eq("user_id", session.user.id)
+            .maybeSingle();
+          householdData = data;
+        }
+        
+        // Fallback to first household if no user_id match (for backward compatibility)
+        if (!householdData) {
+          const { data } = await supabase
+            .from("households")
+            .select("*")
+            .limit(1)
+            .maybeSingle();
+          householdData = data;
+        }
 
         if (householdData) {
           setHousehold(householdData);

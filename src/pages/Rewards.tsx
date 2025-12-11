@@ -172,11 +172,30 @@ const Rewards = () => {
 
   const fetchData = async () => {
     try {
-      const { data: householdData } = await supabase
-        .from("households")
-        .select("id, points, level")
-        .limit(1)
-        .maybeSingle();
+      // Get current user session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      let householdData = null;
+      
+      if (session?.user?.id) {
+        // Fetch household by user_id
+        const { data } = await supabase
+          .from("households")
+          .select("id, points, level")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        householdData = data;
+      }
+      
+      // Fallback for backward compatibility
+      if (!householdData) {
+        const { data } = await supabase
+          .from("households")
+          .select("id, points, level")
+          .limit(1)
+          .maybeSingle();
+        householdData = data;
+      }
 
       if (householdData) {
         setHousehold(householdData);

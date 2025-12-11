@@ -20,6 +20,16 @@ import DriverHome from "./pages/driver/DriverHome";
 import DriverSearch from "./pages/driver/DriverSearch";
 import DriverProfile from "./pages/driver/DriverProfile";
 import DriverAuth from "./pages/driver/DriverAuth";
+import MunicipalAuth from "./pages/municipal/MunicipalAuth";
+import MunicipalLayout from "./pages/municipal/MunicipalLayout";
+import MunicipalDashboard from "./pages/municipal/MunicipalDashboard";
+import MunicipalHouseholds from "./pages/municipal/MunicipalHouseholds";
+import MunicipalComplaints from "./pages/municipal/MunicipalComplaints";
+import MunicipalCollections from "./pages/municipal/MunicipalCollections";
+import MunicipalDrivers from "./pages/municipal/MunicipalDrivers";
+import MunicipalTasks from "./pages/municipal/MunicipalTasks";
+import MunicipalHazards from "./pages/municipal/MunicipalHazards";
+import MunicipalSettings from "./pages/municipal/MunicipalSettings";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +43,19 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           {/* Driver Auth - Separate */}
           <Route path="/driver/auth" element={<DriverAuth />} />
+          {/* Municipal Auth - Separate */}
+          <Route path="/municipal/auth" element={<MunicipalAuth />} />
+          {/* Municipal Dashboard Routes */}
+          <Route path="/municipal" element={<MunicipalLayout />}>
+            <Route index element={<MunicipalDashboard />} />
+            <Route path="households" element={<MunicipalHouseholds />} />
+            <Route path="complaints" element={<MunicipalComplaints />} />
+            <Route path="collections" element={<MunicipalCollections />} />
+            <Route path="drivers" element={<MunicipalDrivers />} />
+            <Route path="tasks" element={<MunicipalTasks />} />
+            <Route path="hazards" element={<MunicipalHazards />} />
+            <Route path="settings" element={<MunicipalSettings />} />
+          </Route>
           {/* Driver App Routes */}
           <Route
             path="/driver/*"

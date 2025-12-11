@@ -58,6 +58,7 @@ export type Database = {
           driver_id: string | null
           household_id: string | null
           id: string
+          segregation_status: string | null
           status: string
         }
         Insert: {
@@ -65,6 +66,7 @@ export type Database = {
           driver_id?: string | null
           household_id?: string | null
           id?: string
+          segregation_status?: string | null
           status?: string
         }
         Update: {
@@ -72,6 +74,7 @@ export type Database = {
           driver_id?: string | null
           household_id?: string | null
           id?: string
+          segregation_status?: string | null
           status?: string
         }
         Relationships: [
@@ -157,6 +160,44 @@ export type Database = {
           },
         ]
       }
+      course_completions: {
+        Row: {
+          completed_at: string | null
+          course_id: string | null
+          id: string
+          progress_percent: number
+          quiz_score: number | null
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          course_id?: string | null
+          id?: string
+          progress_percent?: number
+          quiz_score?: number | null
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          course_id?: string | null
+          id?: string
+          progress_percent?: number
+          quiz_score?: number | null
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_completions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "safety_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drivers: {
         Row: {
           created_at: string
@@ -205,6 +246,51 @@ export type Database = {
         }
         Relationships: []
       }
+      hazard_reports: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          description: string | null
+          hazard_type: string
+          id: string
+          image_url: string | null
+          location: string
+          reporter_id: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          severity: string
+          status: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          description?: string | null
+          hazard_type: string
+          id?: string
+          image_url?: string | null
+          location: string
+          reporter_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          description?: string | null
+          hazard_type?: string
+          id?: string
+          image_url?: string | null
+          location?: string
+          reporter_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+        }
+        Relationships: []
+      }
       households: {
         Row: {
           address: string | null
@@ -244,6 +330,42 @@ export type Database = {
         }
         Relationships: []
       }
+      municipal_users: {
+        Row: {
+          created_at: string
+          department: string | null
+          email: string
+          id: string
+          name: string
+          phone: string | null
+          role: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          email: string
+          id?: string
+          name: string
+          phone?: string | null
+          role?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          email?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          role?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       rewards_tasks: {
         Row: {
           description: string | null
@@ -270,6 +392,36 @@ export type Database = {
           level_reward?: number
           points_reward?: number
           time_limit?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      safety_courses: {
+        Row: {
+          content_type: string
+          content_url: string | null
+          created_at: string
+          description: string | null
+          duration_minutes: number | null
+          id: string
+          title: string
+        }
+        Insert: {
+          content_type?: string
+          content_url?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          title: string
+        }
+        Update: {
+          content_type?: string
+          content_url?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
           title?: string
         }
         Relationships: []

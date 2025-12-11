@@ -52,6 +52,38 @@ export type Database = {
           },
         ]
       }
+      collection_logs: {
+        Row: {
+          collected_at: string
+          driver_id: string | null
+          household_id: string | null
+          id: string
+          status: string
+        }
+        Insert: {
+          collected_at?: string
+          driver_id?: string | null
+          household_id?: string | null
+          id?: string
+          status?: string
+        }
+        Update: {
+          collected_at?: string
+          driver_id?: string | null
+          household_id?: string | null
+          id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_logs_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       complaints: {
         Row: {
           category: string

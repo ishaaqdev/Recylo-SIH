@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { BottomNav } from "@/components/ui/BottomNav";
 import Index from "./pages/Index";
 import Bins from "./pages/Bins";
+import BinDetail from "./pages/BinDetail";
 import QRPage from "./pages/QRPage";
 import Profile from "./pages/Profile";
 import Rewards from "./pages/Rewards";
@@ -32,6 +33,7 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/bins" element={<Bins />} />
+                  <Route path="/bins/:binType" element={<BinDetail />} />
                   <Route path="/qr" element={<QRPage />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/rewards" element={<Rewards />} />

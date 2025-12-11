@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { DonutChart } from "@/components/ui/DonutChart";
-import { X, Clock, Leaf, Recycle, Trash2, AlertTriangle } from "lucide-react";
+import { Leaf, Recycle, Trash2, AlertTriangle } from "lucide-react";
 
 interface BinData {
   organic: number;
@@ -28,13 +28,8 @@ const binTypeConfig = [
   { key: "hazardous", label: "Hazardous", color: "hsl(var(--hazardous))", icon: AlertTriangle },
 ];
 
-const getWeightFromPercentage = (percentage: number) => {
-  const maxCapacity = 10;
-  return ((percentage / 100) * maxCapacity).toFixed(1);
-};
-
 export const BinOverview = ({ binData }: BinOverviewProps) => {
-  const [selectedBin, setSelectedBin] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [conversions, setConversions] = useState<BinConversion[]>([]);
 
   useEffect(() => {
@@ -49,7 +44,6 @@ export const BinOverview = ({ binData }: BinOverviewProps) => {
 
     loadConversions();
 
-    // Listen for custom event (same tab) and storage event (other tabs)
     const handleConversionUpdate = () => loadConversions();
     
     window.addEventListener("binConversionsUpdated", handleConversionUpdate);
@@ -77,13 +71,12 @@ export const BinOverview = ({ binData }: BinOverviewProps) => {
       percentage: binData[binType.key as keyof BinData],
       color: displayType?.color || binType.color,
       icon: displayType?.icon || binType.icon,
-      lastDeposit: binType.key === "organic" ? "2 hours ago" : 
-                   binType.key === "recyclable" ? "5 hours ago" : 
-                   binType.key === "non_recyclable" ? "1 day ago" : "3 days ago",
     };
   });
 
-  const selectedBinData = bins.find((bin) => bin.originalKey === selectedBin);
+  const handleBinClick = (binKey: string) => {
+    navigate(`/bins/${binKey}`);
+  };
 
   return (
     <div className="bg-card rounded-3xl p-5 premium-shadow animate-fade-up stagger-2">
@@ -103,7 +96,7 @@ export const BinOverview = ({ binData }: BinOverviewProps) => {
         {bins.map((bin) => (
           <button
             key={bin.originalKey}
-            onClick={() => setSelectedBin(bin.originalKey)}
+            onClick={() => handleBinClick(bin.originalKey)}
             className="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity"
           >
             <DonutChart
@@ -116,65 +109,6 @@ export const BinOverview = ({ binData }: BinOverviewProps) => {
           </button>
         ))}
       </div>
-
-      {/* Detail Modal */}
-      {selectedBin && selectedBinData && (
-        <div 
-          className="fixed inset-0 bg-foreground/20 backdrop-blur-sm flex items-center justify-center p-6"
-          style={{ zIndex: 9999 }}
-        >
-          <div className="bg-card w-full max-w-sm rounded-2xl p-6 animate-scale-in">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-foreground">
-                {selectedBinData.label} Bin
-              </h3>
-              <button
-                onClick={() => setSelectedBin(null)}
-                className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center"
-              >
-                <X className="w-4 h-4 text-foreground" />
-              </button>
-            </div>
-
-            <div className="flex justify-center mb-6">
-              <DonutChart
-                percentage={selectedBinData.percentage}
-                color={selectedBinData.color}
-                label=""
-                size={120}
-                strokeWidth={10}
-              />
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-muted rounded-xl">
-                <span className="text-sm text-muted-foreground">Fill Level</span>
-                <span className="font-semibold text-foreground">{selectedBinData.percentage}%</span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-muted rounded-xl">
-                <span className="text-sm text-muted-foreground">Weight</span>
-                <span className="font-semibold text-foreground">
-                  {getWeightFromPercentage(selectedBinData.percentage)} kg
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-muted rounded-xl">
-                <span className="text-sm text-muted-foreground flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  Last Deposit
-                </span>
-                <span className="font-semibold text-foreground">{selectedBinData.lastDeposit}</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setSelectedBin(null)}
-              className="w-full mt-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

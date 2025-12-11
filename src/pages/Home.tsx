@@ -113,6 +113,27 @@ const Home = () => {
           setHousehold(prev => prev ? { ...prev, ...payload.new } : null);
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'collection_logs',
+          filter: `household_id=eq.${household.id}`
+        },
+        (payload: any) => {
+          console.log('New collection logged:', payload);
+          // Show notification via toast when collection is confirmed
+          if (payload.new.segregation_status === 'pass') {
+            import('@/hooks/use-toast').then(({ toast }) => {
+              toast({
+                title: "Collection Complete! 🎉",
+                description: `You earned 10 points and advanced to level ${(household?.level || 0) + 1}!`,
+              });
+            });
+          }
+        }
+      )
       .subscribe();
 
     return () => {
@@ -175,7 +196,8 @@ const Home = () => {
       {/* Notifications Sheet */}
       <NotificationSheet 
         isOpen={showNotifications} 
-        onClose={() => setShowNotifications(false)} 
+        onClose={() => setShowNotifications(false)}
+        householdId={household?.id}
       />
     </div>
   );

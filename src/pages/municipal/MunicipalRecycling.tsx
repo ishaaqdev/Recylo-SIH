@@ -167,6 +167,7 @@ const MunicipalRecycling = () => {
   // Calculate totals and values
   const totalRecyclable = Object.values(recyclableData).reduce((a, b) => a + b, 0);
   const totalHazardous = Object.values(hazardousData).reduce((a, b) => a + b, 0);
+  const totalWaste = totalRecyclable + totalHazardous + organicData + nonRecyclableData;
 
   const recyclableValue = 
     recyclableData.plastic * PRICES.plastic +
@@ -181,7 +182,26 @@ const MunicipalRecycling = () => {
   const compostValue = organicData * PRICES.compost;
   const totalValue = recyclableValue + hazardousValue + compostValue;
 
-  // Calculate percentages for donut charts
+  // Format weight - show in tonnes if >= 1000kg
+  const formatWeight = (kg: number) => {
+    if (kg >= 1000) {
+      return `${(kg / 1000).toFixed(2)} T`;
+    }
+    return `${kg.toFixed(1)} kg`;
+  };
+
+  // Calculate percentages for waste category breakdown donut
+  const getWasteCategoryPercentages = () => {
+    if (totalWaste === 0) return { recyclable: 0, hazardous: 0, organic: 0, nonRecyclable: 0 };
+    return {
+      recyclable: Math.round((totalRecyclable / totalWaste) * 100),
+      hazardous: Math.round((totalHazardous / totalWaste) * 100),
+      organic: Math.round((organicData / totalWaste) * 100),
+      nonRecyclable: Math.round((nonRecyclableData / totalWaste) * 100),
+    };
+  };
+
+  // Calculate percentages for recyclable subcategories
   const getRecyclablePercentages = () => {
     if (totalRecyclable === 0) return { plastic: 0, metal: 0, cardboard: 0, paper: 0 };
     return {
@@ -192,18 +212,8 @@ const MunicipalRecycling = () => {
     };
   };
 
-  const getHazardousPercentages = () => {
-    if (totalHazardous === 0) return { batteries: 0, biomedical: 0, ewaste: 0, toxic_sharp: 0 };
-    return {
-      batteries: Math.round((hazardousData.batteries / totalHazardous) * 100),
-      biomedical: Math.round((hazardousData.biomedical / totalHazardous) * 100),
-      ewaste: Math.round((hazardousData.ewaste / totalHazardous) * 100),
-      toxic_sharp: Math.round((hazardousData.toxic_sharp / totalHazardous) * 100),
-    };
-  };
-
+  const wasteCategoryPercents = getWasteCategoryPercentages();
   const recyclablePercents = getRecyclablePercentages();
-  const hazardousPercents = getHazardousPercentages();
 
   if (loading) {
     return (
@@ -272,162 +282,131 @@ const MunicipalRecycling = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard
           title="Total Recyclables"
-          value={`${totalRecyclable.toFixed(1)} kg`}
+          value={formatWeight(totalRecyclable)}
           icon={Recycle}
           iconClassName="bg-blue-100"
         />
         <StatCard
           title="Total Hazardous"
-          value={`${totalHazardous.toFixed(1)} kg`}
+          value={formatWeight(totalHazardous)}
           icon={AlertTriangle}
           iconClassName="bg-red-100"
         />
         <StatCard
           title="Total Organic"
-          value={`${organicData.toFixed(1)} kg`}
+          value={formatWeight(organicData)}
           icon={Leaf}
           iconClassName="bg-green-100"
         />
         <StatCard
           title="Non-Recyclable"
-          value={`${nonRecyclableData.toFixed(1)} kg`}
+          value={formatWeight(nonRecyclableData)}
           icon={Package}
           iconClassName="bg-gray-100"
         />
       </div>
 
-      {/* Donut Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recyclables Breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Recycle className="w-5 h-5 text-blue-500" />
-              Recyclables Breakdown
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-4 gap-4">
-              <DonutChart
-                percentage={recyclablePercents.plastic}
-                color="hsl(200, 80%, 50%)"
-                label="Plastic"
-                size={90}
-                strokeWidth={8}
-              />
-              <DonutChart
-                percentage={recyclablePercents.metal}
-                color="hsl(220, 70%, 60%)"
-                label="Metal"
-                size={90}
-                strokeWidth={8}
-              />
-              <DonutChart
-                percentage={recyclablePercents.cardboard}
-                color="hsl(30, 60%, 50%)"
-                label="Cardboard"
-                size={90}
-                strokeWidth={8}
-              />
-              <DonutChart
-                percentage={recyclablePercents.paper}
-                color="hsl(45, 70%, 55%)"
-                label="Paper"
-                size={90}
-                strokeWidth={8}
-              />
-            </div>
-            <div className="mt-6 border-t pt-4">
-              <h4 className="font-semibold mb-3">Material Values</h4>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="flex justify-between p-2 bg-slate-50 rounded">
-                  <span>Plastic ({recyclableData.plastic.toFixed(1)} kg)</span>
-                  <span className="font-semibold text-green-600">₹{(recyclableData.plastic * PRICES.plastic).toFixed(0)}</span>
-                </div>
-                <div className="flex justify-between p-2 bg-slate-50 rounded">
-                  <span>Metal ({recyclableData.metal.toFixed(1)} kg)</span>
-                  <span className="font-semibold text-green-600">₹{(recyclableData.metal * PRICES.metal).toFixed(0)}</span>
-                </div>
-                <div className="flex justify-between p-2 bg-slate-50 rounded">
-                  <span>Cardboard ({recyclableData.cardboard.toFixed(1)} kg)</span>
-                  <span className="font-semibold text-green-600">₹{(recyclableData.cardboard * PRICES.cardboard).toFixed(0)}</span>
-                </div>
-                <div className="flex justify-between p-2 bg-slate-50 rounded">
-                  <span>Paper ({recyclableData.paper.toFixed(1)} kg)</span>
-                  <span className="font-semibold text-green-600">₹{(recyclableData.paper * PRICES.paper).toFixed(0)}</span>
-                </div>
+      {/* Main Waste Category Donut */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Recycle className="w-5 h-5 text-primary" />
+            Waste Category Distribution
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center gap-12">
+            <DonutChart
+              percentage={wasteCategoryPercents.recyclable}
+              color="hsl(200, 80%, 50%)"
+              label="Recyclable"
+              size={140}
+              strokeWidth={14}
+            />
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-500" />
+                <span>Recyclable: {formatWeight(totalRecyclable)} ({wasteCategoryPercents.recyclable}%)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500" />
+                <span>Hazardous: {formatWeight(totalHazardous)} ({wasteCategoryPercents.hazardous}%)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500" />
+                <span>Organic: {formatWeight(organicData)} ({wasteCategoryPercents.organic}%)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-gray-500" />
+                <span>Non-Recyclable: {formatWeight(nonRecyclableData)} ({wasteCategoryPercents.nonRecyclable}%)</span>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Hazardous Breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-500" />
-              Hazardous Waste Breakdown
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-4 gap-4">
-              <DonutChart
-                percentage={hazardousPercents.batteries}
-                color="hsl(45, 90%, 50%)"
-                label="Batteries"
-                icon={<Battery className="w-4 h-4" />}
-                size={90}
-                strokeWidth={8}
-              />
-              <DonutChart
-                percentage={hazardousPercents.biomedical}
-                color="hsl(340, 80%, 55%)"
-                label="Biomedical"
-                icon={<Pill className="w-4 h-4" />}
-                size={90}
-                strokeWidth={8}
-              />
-              <DonutChart
-                percentage={hazardousPercents.ewaste}
-                color="hsl(280, 60%, 50%)"
-                label="E-Waste"
-                icon={<Zap className="w-4 h-4" />}
-                size={90}
-                strokeWidth={8}
-              />
-              <DonutChart
-                percentage={hazardousPercents.toxic_sharp}
-                color="hsl(0, 70%, 55%)"
-                label="Toxic/Sharp"
-                icon={<Scissors className="w-4 h-4" />}
-                size={90}
-                strokeWidth={8}
-              />
-            </div>
-            <div className="mt-6 border-t pt-4">
-              <h4 className="font-semibold mb-3">Recovery Values</h4>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="flex justify-between p-2 bg-slate-50 rounded">
-                  <span>Batteries ({hazardousData.batteries.toFixed(1)} kg)</span>
-                  <span className="font-semibold text-green-600">₹{(hazardousData.batteries * PRICES.batteries).toFixed(0)}</span>
-                </div>
-                <div className="flex justify-between p-2 bg-slate-50 rounded">
-                  <span>E-Waste ({hazardousData.ewaste.toFixed(1)} kg)</span>
-                  <span className="font-semibold text-green-600">₹{(hazardousData.ewaste * PRICES.ewaste).toFixed(0)}</span>
-                </div>
-                <div className="flex justify-between p-2 bg-red-50 rounded">
-                  <span>Biomedical ({hazardousData.biomedical.toFixed(1)} kg)</span>
-                  <span className="font-semibold text-red-600">Safe Disposal</span>
-                </div>
-                <div className="flex justify-between p-2 bg-red-50 rounded">
-                  <span>Toxic/Sharp ({hazardousData.toxic_sharp.toFixed(1)} kg)</span>
-                  <span className="font-semibold text-red-600">Safe Disposal</span>
-                </div>
+      {/* Recyclables Breakdown */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Recycle className="w-5 h-5 text-blue-500" />
+            Recyclables Breakdown ({formatWeight(totalRecyclable)})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-4 gap-4">
+            <DonutChart
+              percentage={recyclablePercents.plastic}
+              color="hsl(200, 80%, 50%)"
+              label="Plastic"
+              size={90}
+              strokeWidth={8}
+            />
+            <DonutChart
+              percentage={recyclablePercents.metal}
+              color="hsl(220, 70%, 60%)"
+              label="Metal"
+              size={90}
+              strokeWidth={8}
+            />
+            <DonutChart
+              percentage={recyclablePercents.cardboard}
+              color="hsl(30, 60%, 50%)"
+              label="Cardboard"
+              size={90}
+              strokeWidth={8}
+            />
+            <DonutChart
+              percentage={recyclablePercents.paper}
+              color="hsl(45, 70%, 55%)"
+              label="Paper"
+              size={90}
+              strokeWidth={8}
+            />
+          </div>
+          <div className="mt-6 border-t pt-4">
+            <h4 className="font-semibold mb-3">Material Values</h4>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="flex justify-between p-2 bg-slate-50 rounded">
+                <span>Plastic ({formatWeight(recyclableData.plastic)})</span>
+                <span className="font-semibold text-green-600">₹{(recyclableData.plastic * PRICES.plastic).toFixed(0)}</span>
+              </div>
+              <div className="flex justify-between p-2 bg-slate-50 rounded">
+                <span>Metal ({formatWeight(recyclableData.metal)})</span>
+                <span className="font-semibold text-green-600">₹{(recyclableData.metal * PRICES.metal).toFixed(0)}</span>
+              </div>
+              <div className="flex justify-between p-2 bg-slate-50 rounded">
+                <span>Cardboard ({formatWeight(recyclableData.cardboard)})</span>
+                <span className="font-semibold text-green-600">₹{(recyclableData.cardboard * PRICES.cardboard).toFixed(0)}</span>
+              </div>
+              <div className="flex justify-between p-2 bg-slate-50 rounded">
+                <span>Paper ({formatWeight(recyclableData.paper)})</span>
+                <span className="font-semibold text-green-600">₹{(recyclableData.paper * PRICES.paper).toFixed(0)}</span>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Organic Compost Section */}
       <Card>
@@ -441,11 +420,11 @@ const MunicipalRecycling = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center p-6 bg-green-50 rounded-xl">
               <p className="text-sm text-muted-foreground mb-2">Total Organic Collected</p>
-              <p className="text-3xl font-bold text-green-700">{organicData.toFixed(1)} kg</p>
+              <p className="text-3xl font-bold text-green-700">{formatWeight(organicData)}</p>
             </div>
             <div className="text-center p-6 bg-emerald-50 rounded-xl">
               <p className="text-sm text-muted-foreground mb-2">Estimated Compost Output</p>
-              <p className="text-3xl font-bold text-emerald-700">{(organicData * 0.6).toFixed(1)} kg</p>
+              <p className="text-3xl font-bold text-emerald-700">{formatWeight(organicData * 0.6)}</p>
               <p className="text-xs text-muted-foreground mt-1">(60% conversion rate)</p>
             </div>
             <div className="text-center p-6 bg-teal-50 rounded-xl">
@@ -472,7 +451,7 @@ const MunicipalRecycling = () => {
                 <TableHead>Material</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead className="text-right">Price (₹/kg)</TableHead>
-                <TableHead className="text-right">Collected (kg)</TableHead>
+                <TableHead className="text-right">Collected</TableHead>
                 <TableHead className="text-right">Value (₹)</TableHead>
               </TableRow>
             </TableHeader>
@@ -481,42 +460,42 @@ const MunicipalRecycling = () => {
                 <TableCell className="font-medium">Plastic</TableCell>
                 <TableCell><span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">Recyclable</span></TableCell>
                 <TableCell className="text-right">{PRICES.plastic}</TableCell>
-                <TableCell className="text-right">{recyclableData.plastic.toFixed(1)}</TableCell>
+                <TableCell className="text-right">{formatWeight(recyclableData.plastic)}</TableCell>
                 <TableCell className="text-right font-semibold">₹{(recyclableData.plastic * PRICES.plastic).toFixed(0)}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium">Metal</TableCell>
                 <TableCell><span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">Recyclable</span></TableCell>
                 <TableCell className="text-right">{PRICES.metal}</TableCell>
-                <TableCell className="text-right">{recyclableData.metal.toFixed(1)}</TableCell>
+                <TableCell className="text-right">{formatWeight(recyclableData.metal)}</TableCell>
                 <TableCell className="text-right font-semibold">₹{(recyclableData.metal * PRICES.metal).toFixed(0)}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium">Cardboard</TableCell>
                 <TableCell><span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">Recyclable</span></TableCell>
                 <TableCell className="text-right">{PRICES.cardboard}</TableCell>
-                <TableCell className="text-right">{recyclableData.cardboard.toFixed(1)}</TableCell>
+                <TableCell className="text-right">{formatWeight(recyclableData.cardboard)}</TableCell>
                 <TableCell className="text-right font-semibold">₹{(recyclableData.cardboard * PRICES.cardboard).toFixed(0)}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium">Paper</TableCell>
                 <TableCell><span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">Recyclable</span></TableCell>
                 <TableCell className="text-right">{PRICES.paper}</TableCell>
-                <TableCell className="text-right">{recyclableData.paper.toFixed(1)}</TableCell>
+                <TableCell className="text-right">{formatWeight(recyclableData.paper)}</TableCell>
                 <TableCell className="text-right font-semibold">₹{(recyclableData.paper * PRICES.paper).toFixed(0)}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium">Batteries</TableCell>
                 <TableCell><span className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs">Hazardous</span></TableCell>
                 <TableCell className="text-right">{PRICES.batteries}</TableCell>
-                <TableCell className="text-right">{hazardousData.batteries.toFixed(1)}</TableCell>
+                <TableCell className="text-right">{formatWeight(hazardousData.batteries)}</TableCell>
                 <TableCell className="text-right font-semibold">₹{(hazardousData.batteries * PRICES.batteries).toFixed(0)}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium">E-Waste</TableCell>
                 <TableCell><span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">Hazardous</span></TableCell>
                 <TableCell className="text-right">{PRICES.ewaste}</TableCell>
-                <TableCell className="text-right">{hazardousData.ewaste.toFixed(1)}</TableCell>
+                <TableCell className="text-right">{formatWeight(hazardousData.ewaste)}</TableCell>
                 <TableCell className="text-right font-semibold">₹{(hazardousData.ewaste * PRICES.ewaste).toFixed(0)}</TableCell>
               </TableRow>
               <TableRow>

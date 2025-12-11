@@ -295,36 +295,45 @@ export type Database = {
         Row: {
           address: string | null
           created_at: string
+          district: string | null
           id: string
           level: number
           name: string
           phone: string | null
+          pincode: string | null
           points: number
           qr_code: string | null
+          state: string | null
           total_waste_recycled: number
           updated_at: string
         }
         Insert: {
           address?: string | null
           created_at?: string
+          district?: string | null
           id?: string
           level?: number
           name: string
           phone?: string | null
+          pincode?: string | null
           points?: number
           qr_code?: string | null
+          state?: string | null
           total_waste_recycled?: number
           updated_at?: string
         }
         Update: {
           address?: string | null
           created_at?: string
+          district?: string | null
           id?: string
           level?: number
           name?: string
           phone?: string | null
+          pincode?: string | null
           points?: number
           qr_code?: string | null
+          state?: string | null
           total_waste_recycled?: number
           updated_at?: string
         }

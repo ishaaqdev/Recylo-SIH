@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { QrCode, Check, X, Truck } from "lucide-react";
+import { QrCode, Check, X, Truck, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Html5Qrcode } from "html5-qrcode";
 import { getHouseholdByQRCode, createCollectionLog } from "@/lib/driverActions";
@@ -21,10 +21,19 @@ const DriverHome = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showReject, setShowReject] = useState(false);
   const [driverName, setDriverName] = useState("Driver");
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
     checkAuth();
+    return () => {
+      // Cleanup scanner on unmount
+      if (scannerRef.current) {
+        try {
+          scannerRef.current.stop().catch(() => {});
+        } catch (e) {}
+      }
+    };
   }, []);
 
   const checkAuth = async () => {
@@ -47,29 +56,54 @@ const DriverHome = () => {
 
   const startScanner = async () => {
     setScanning(true);
+    setCameraError(null);
     
+    // Small delay to ensure DOM is ready
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     try {
       const html5QrCode = new Html5Qrcode("qr-reader");
       scannerRef.current = html5QrCode;
+
+      // First check if cameras are available
+      const cameras = await Html5Qrcode.getCameras();
+      if (!cameras || cameras.length === 0) {
+        throw new Error("No cameras found on this device");
+      }
 
       await html5QrCode.start(
         { facingMode: "environment" },
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 }
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0
         },
         async (decodedText) => {
-          await html5QrCode.stop();
+          try {
+            await html5QrCode.stop();
+          } catch (e) {}
           scannerRef.current = null;
           setScanning(false);
           handleQRScanned(decodedText);
         },
-        () => {}
+        () => {} // Ignore scan failures
       );
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Scanner error:", err);
+      let errorMessage = "Unable to access camera";
+      
+      if (err.message?.includes("NotAllowedError") || err.message?.includes("Permission")) {
+        errorMessage = "Camera permission denied. Please allow camera access in your browser settings.";
+      } else if (err.message?.includes("NotFoundError") || err.message?.includes("No cameras")) {
+        errorMessage = "No camera found on this device.";
+      } else if (err.message?.includes("NotReadableError")) {
+        errorMessage = "Camera is in use by another application.";
+      }
+      
+      setCameraError(errorMessage);
       toast({
-        title: "Camera access denied",
-        description: "Please allow camera access to scan QR codes",
+        title: "Camera Error",
+        description: errorMessage,
         variant: "destructive"
       });
       setScanning(false);
@@ -84,6 +118,7 @@ const DriverHome = () => {
       scannerRef.current = null;
     }
     setScanning(false);
+    setCameraError(null);
   };
 
   const handleQRScanned = async (code: string) => {
@@ -149,19 +184,32 @@ const DriverHome = () => {
       <div className="px-6 pt-12">
         <div className="flex flex-col items-center justify-center min-h-[50vh]">
           {!scanning && !foundHousehold && (
-            <button
-              onClick={startScanner}
-              className="w-full max-w-sm aspect-square rounded-3xl bg-sky-500 hover:bg-sky-600 text-white shadow-xl shadow-sky-200 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex flex-col items-center justify-center gap-4"
-            >
-              <QrCode className="w-20 h-20" />
-              <span className="text-2xl font-bold">SCAN QR CODE</span>
-            </button>
+            <div className="w-full max-w-sm space-y-4">
+              <button
+                onClick={startScanner}
+                className="w-full aspect-square rounded-3xl bg-sky-500 hover:bg-sky-600 text-white shadow-xl shadow-sky-200 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex flex-col items-center justify-center gap-4"
+              >
+                <Camera className="w-20 h-20" />
+                <span className="text-2xl font-bold">SCAN QR CODE</span>
+              </button>
+              
+              {cameraError && (
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
+                  <p className="text-red-600 text-sm">{cameraError}</p>
+                  <p className="text-gray-500 text-xs mt-2">
+                    Use the Search tab to find households by phone number instead.
+                  </p>
+                </div>
+              )}
+            </div>
           )}
 
           {/* QR Scanner View */}
           {scanning && (
-            <div className="fixed inset-0 bg-black z-50">
-              <div id="qr-reader" className="w-full h-full" />
+            <div className="fixed inset-0 bg-black z-50 flex flex-col">
+              <div className="flex-1 relative">
+                <div id="qr-reader" className="w-full h-full" />
+              </div>
               <Button
                 onClick={stopScanner}
                 className="absolute top-12 right-6 bg-white/20 backdrop-blur-sm rounded-xl"
@@ -170,6 +218,7 @@ const DriverHome = () => {
               </Button>
               <div className="absolute bottom-24 left-0 right-0 text-center text-white">
                 <p className="text-lg font-medium">Point camera at QR code</p>
+                <p className="text-sm text-white/70 mt-1">Make sure QR code is well lit</p>
               </div>
             </div>
           )}

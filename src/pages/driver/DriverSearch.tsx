@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Check, X, Phone, User, Hash } from "lucide-react";
+import { Search, Check, X, Phone, User, Hash, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { searchHouseholdByPhone, createCollectionLog } from "@/lib/driverActions";
@@ -14,18 +14,11 @@ interface Household {
   address: string;
 }
 
-const sampleNumbers = [
-  "9437123456",
-  "8895654321",
-  "7788991234",
-  "9876543210",
-  "8765432109"
-];
-
 const DriverSearch = () => {
   const navigate = useNavigate();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [results, setResults] = useState<Household[]>([]);
+  const [allHouseholds, setAllHouseholds] = useState<Household[]>([]);
   const [searching, setSearching] = useState(false);
   const [selectedHousehold, setSelectedHousehold] = useState<Household | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -33,12 +26,25 @@ const DriverSearch = () => {
 
   useEffect(() => {
     checkAuth();
+    fetchAllHouseholds();
   }, []);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       navigate("/driver/auth");
+    }
+  };
+
+  const fetchAllHouseholds = async () => {
+    const { data } = await supabase
+      .from("households")
+      .select("id, name, phone, address")
+      .order("name")
+      .limit(20);
+    
+    if (data) {
+      setAllHouseholds(data);
     }
   };
 
@@ -96,12 +102,15 @@ const DriverSearch = () => {
     setShowReject(true);
   };
 
+  // Display households to show (search results or all households if no search)
+  const displayHouseholds = results.length > 0 ? results : (phoneNumber.length === 0 ? allHouseholds : []);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-50 to-white pb-24">
       {/* Header */}
       <div className="bg-white px-6 pt-12 pb-6 shadow-sm">
         <h1 className="text-2xl font-bold text-gray-900">Search Household</h1>
-        <p className="text-gray-500">Find by mobile number</p>
+        <p className="text-gray-500">Find by mobile number or select from list</p>
       </div>
 
       {/* Search Input */}
@@ -131,29 +140,16 @@ const DriverSearch = () => {
           </div>
         </div>
 
-        {/* Sample Numbers */}
-        <div className="mt-4 bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-500 mb-3">Quick Search (Sample Numbers)</p>
-          <div className="flex flex-wrap gap-2">
-            {sampleNumbers.map((num) => (
-              <button
-                key={num}
-                onClick={() => setPhoneNumber(num)}
-                className="px-4 py-2 bg-sky-50 text-sky-600 rounded-xl text-sm font-medium hover:bg-sky-100 transition-colors"
-              >
-                {num}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Results */}
-        {results.length > 0 && (
+        {/* Households List */}
+        {displayHouseholds.length > 0 && (
           <div className="mt-6 space-y-3">
             <p className="text-sm text-gray-500 font-medium">
-              {results.length} household{results.length > 1 ? "s" : ""} found
+              {results.length > 0 
+                ? `${results.length} household${results.length > 1 ? "s" : ""} found`
+                : "All Registered Households"
+              }
             </p>
-            {results.map((household) => (
+            {displayHouseholds.map((household) => (
               <button
                 key={household.id}
                 onClick={() => setSelectedHousehold(household)}
@@ -170,8 +166,8 @@ const DriverSearch = () => {
                       <p className="text-gray-600">{household.phone}</p>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <Hash className="w-4 h-4 text-gray-400" />
-                      <p className="text-gray-500 text-sm truncate">{household.id.slice(0, 8)}...</p>
+                      <MapPin className="w-4 h-4 text-gray-400" />
+                      <p className="text-gray-500 text-sm truncate">{household.address}</p>
                     </div>
                   </div>
                 </div>
@@ -191,7 +187,9 @@ const DriverSearch = () => {
               <p className="text-sm text-gray-500 mb-1">Household</p>
               <p className="text-xl font-bold text-gray-900 mb-3">{selectedHousehold.name}</p>
               <p className="text-sm text-gray-500 mb-1">Phone</p>
-              <p className="text-lg font-semibold text-gray-800">{selectedHousehold.phone}</p>
+              <p className="text-lg font-semibold text-gray-800 mb-3">{selectedHousehold.phone}</p>
+              <p className="text-sm text-gray-500 mb-1">Address</p>
+              <p className="text-gray-700">{selectedHousehold.address}</p>
             </div>
 
             <div className="space-y-3">

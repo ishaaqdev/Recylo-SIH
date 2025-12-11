@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -10,7 +11,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Users, Truck, TrendingUp } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Users, Truck, TrendingUp, Search, Filter } from "lucide-react";
 import StatCard from "@/components/municipal/StatCard";
 
 interface Driver {
@@ -25,7 +33,10 @@ interface Driver {
 
 const MunicipalDrivers = () => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [filteredDrivers, setFilteredDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const [stats, setStats] = useState({
     totalDrivers: 0,
@@ -37,6 +48,31 @@ const MunicipalDrivers = () => {
     fetchDrivers();
   }, []);
 
+  useEffect(() => {
+    applyFilters();
+  }, [searchTerm, statusFilter, drivers]);
+
+  const applyFilters = () => {
+    let filtered = drivers;
+
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (d) =>
+          d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          d.driver_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          d.phone?.includes(searchTerm)
+      );
+    }
+
+    if (statusFilter === "active") {
+      filtered = filtered.filter((d) => d.collectionsToday > 0);
+    } else if (statusFilter === "inactive") {
+      filtered = filtered.filter((d) => d.collectionsToday === 0);
+    }
+
+    setFilteredDrivers(filtered);
+  };
+
   const fetchDrivers = async () => {
     const { data: driversData, error } = await supabase
       .from("drivers")
@@ -44,7 +80,6 @@ const MunicipalDrivers = () => {
       .order("created_at", { ascending: false });
 
     if (!error && driversData) {
-      // Fetch collection counts for each driver
       const today = new Date().toISOString().split("T")[0];
       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -71,8 +106,8 @@ const MunicipalDrivers = () => {
       );
 
       setDrivers(driversWithStats);
+      setFilteredDrivers(driversWithStats);
 
-      // Calculate stats
       const activeToday = driversWithStats.filter((d) => d.collectionsToday > 0).length;
       const totalCollections = driversWithStats.reduce((sum, d) => sum + d.collectionsWeek, 0);
 
@@ -109,6 +144,36 @@ const MunicipalDrivers = () => {
         />
       </div>
 
+      {/* Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-wrap gap-4">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, ID, or phone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Drivers</SelectItem>
+                <SelectItem value="active">Active Today</SelectItem>
+                <SelectItem value="inactive">Inactive Today</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="mt-3 text-sm text-muted-foreground">
+            Showing {filteredDrivers.length} of {drivers.length} drivers
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Table */}
       <Card>
         <CardHeader>
@@ -121,6 +186,7 @@ const MunicipalDrivers = () => {
                 <TableHead>Name</TableHead>
                 <TableHead>Driver ID</TableHead>
                 <TableHead>Phone</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Collections Today</TableHead>
                 <TableHead>Collections This Week</TableHead>
                 <TableHead>Joined</TableHead>
@@ -129,22 +195,27 @@ const MunicipalDrivers = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     Loading...
                   </TableCell>
                 </TableRow>
-              ) : drivers.length === 0 ? (
+              ) : filteredDrivers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No drivers registered yet
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    No drivers found
                   </TableCell>
                 </TableRow>
               ) : (
-                drivers.map((driver) => (
+                filteredDrivers.map((driver) => (
                   <TableRow key={driver.id}>
                     <TableCell className="font-medium">{driver.name}</TableCell>
                     <TableCell className="font-mono text-sm">{driver.driver_id}</TableCell>
                     <TableCell>{driver.phone || "-"}</TableCell>
+                    <TableCell>
+                      <Badge className={driver.collectionsToday > 0 ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                        {driver.collectionsToday > 0 ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       <Badge variant={driver.collectionsToday > 0 ? "default" : "secondary"}>
                         {driver.collectionsToday}

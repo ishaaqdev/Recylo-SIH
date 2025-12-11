@@ -18,6 +18,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Search, Eye, Filter } from "lucide-react";
 import QRCode from "react-qr-code";
 
@@ -26,6 +33,9 @@ interface Household {
   name: string;
   phone: string | null;
   address: string | null;
+  state: string | null;
+  district: string | null;
+  pincode: string | null;
   level: number;
   points: number;
   total_waste_recycled: number;
@@ -41,24 +51,50 @@ const MunicipalHouseholds = () => {
   const [selectedHousehold, setSelectedHousehold] = useState<Household | null>(null);
   const [householdComplaints, setHouseholdComplaints] = useState<any[]>([]);
   const [householdCollections, setHouseholdCollections] = useState<any[]>([]);
+  
+  // Filters
+  const [districts, setDistricts] = useState<string[]>([]);
+  const [states, setStates] = useState<string[]>([]);
+  const [selectedDistrict, setSelectedDistrict] = useState("all");
+  const [selectedState, setSelectedState] = useState("all");
+  const [selectedLevel, setSelectedLevel] = useState("all");
 
   useEffect(() => {
     fetchHouseholds();
   }, []);
 
   useEffect(() => {
+    applyFilters();
+  }, [searchTerm, selectedDistrict, selectedState, selectedLevel, households]);
+
+  const applyFilters = () => {
+    let filtered = households;
+
     if (searchTerm) {
-      const filtered = households.filter(
+      filtered = filtered.filter(
         (h) =>
           h.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           h.phone?.includes(searchTerm) ||
-          h.address?.toLowerCase().includes(searchTerm.toLowerCase())
+          h.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          h.pincode?.includes(searchTerm)
       );
-      setFilteredHouseholds(filtered);
-    } else {
-      setFilteredHouseholds(households);
     }
-  }, [searchTerm, households]);
+
+    if (selectedDistrict !== "all") {
+      filtered = filtered.filter((h) => h.district === selectedDistrict);
+    }
+
+    if (selectedState !== "all") {
+      filtered = filtered.filter((h) => h.state === selectedState);
+    }
+
+    if (selectedLevel !== "all") {
+      const level = parseInt(selectedLevel);
+      filtered = filtered.filter((h) => h.level === level);
+    }
+
+    setFilteredHouseholds(filtered);
+  };
 
   const fetchHouseholds = async () => {
     const { data, error } = await supabase
@@ -67,8 +103,14 @@ const MunicipalHouseholds = () => {
       .order("created_at", { ascending: false });
 
     if (!error && data) {
-      setHouseholds(data);
-      setFilteredHouseholds(data);
+      setHouseholds(data as Household[]);
+      setFilteredHouseholds(data as Household[]);
+
+      // Extract unique districts and states
+      const uniqueDistricts = [...new Set(data.map((h: any) => h.district).filter(Boolean))];
+      const uniqueStates = [...new Set(data.map((h: any) => h.state).filter(Boolean))];
+      setDistricts(uniqueDistricts as string[]);
+      setStates(uniqueStates as string[]);
     }
     setLoading(false);
   };
@@ -76,7 +118,6 @@ const MunicipalHouseholds = () => {
   const viewHouseholdDetails = async (household: Household) => {
     setSelectedHousehold(household);
 
-    // Fetch complaints for this household
     const { data: complaints } = await supabase
       .from("complaints")
       .select("*")
@@ -85,7 +126,6 @@ const MunicipalHouseholds = () => {
 
     setHouseholdComplaints(complaints || []);
 
-    // Fetch collection logs
     const { data: collections } = await supabase
       .from("collection_logs")
       .select("*")
@@ -95,6 +135,8 @@ const MunicipalHouseholds = () => {
 
     setHouseholdCollections(collections || []);
   };
+
+  const uniqueLevels = [...new Set(households.map((h) => h.level))].sort((a, b) => a - b);
 
   return (
     <div className="space-y-6">
@@ -108,20 +150,58 @@ const MunicipalHouseholds = () => {
       {/* Search and Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <div className="relative flex-1">
+          <div className="flex flex-wrap gap-4">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name, phone, or address..."
+                placeholder="Search by name, phone, address, pincode..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
-            <Button variant="outline">
-              <Filter className="w-4 h-4 mr-2" />
-              Filters
-            </Button>
+            <Select value={selectedState} onValueChange={setSelectedState}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="State" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All States</SelectItem>
+                {states.map((state) => (
+                  <SelectItem key={state} value={state}>
+                    {state}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedDistrict} onValueChange={setSelectedDistrict}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="District" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Districts</SelectItem>
+                {districts.map((district) => (
+                  <SelectItem key={district} value={district}>
+                    {district}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedLevel} onValueChange={setSelectedLevel}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Levels</SelectItem>
+                {uniqueLevels.map((level) => (
+                  <SelectItem key={level} value={level.toString()}>
+                    Level {level}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="mt-3 text-sm text-muted-foreground">
+            Showing {filteredHouseholds.length} of {households.length} households
           </div>
         </CardContent>
       </Card>
@@ -134,7 +214,7 @@ const MunicipalHouseholds = () => {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Phone</TableHead>
-                <TableHead>Address</TableHead>
+                <TableHead>Location</TableHead>
                 <TableHead>Level</TableHead>
                 <TableHead>Points</TableHead>
                 <TableHead>Recycled (kg)</TableHead>
@@ -159,8 +239,13 @@ const MunicipalHouseholds = () => {
                   <TableRow key={household.id}>
                     <TableCell className="font-medium">{household.name}</TableCell>
                     <TableCell>{household.phone || "-"}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">
-                      {household.address || "-"}
+                    <TableCell>
+                      <div className="text-sm">
+                        <p className="truncate max-w-[150px]">{household.address || "-"}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {household.district}, {household.state} - {household.pincode}
+                        </p>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">Level {household.level}</Badge>
@@ -208,6 +293,18 @@ const MunicipalHouseholds = () => {
                   <p className="font-medium">{selectedHousehold.address || "-"}</p>
                 </div>
                 <div>
+                  <p className="text-sm text-muted-foreground">State</p>
+                  <p className="font-medium">{selectedHousehold.state || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">District</p>
+                  <p className="font-medium">{selectedHousehold.district || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Pincode</p>
+                  <p className="font-medium">{selectedHousehold.pincode || "-"}</p>
+                </div>
+                <div>
                   <p className="text-sm text-muted-foreground">Level</p>
                   <Badge>Level {selectedHousehold.level}</Badge>
                 </div>
@@ -232,9 +329,14 @@ const MunicipalHouseholds = () => {
                     {householdCollections.map((c) => (
                       <div key={c.id} className="flex justify-between text-sm p-2 bg-slate-50 rounded">
                         <span>{new Date(c.collected_at).toLocaleDateString()}</span>
-                        <Badge variant={c.status === "collected" ? "default" : "secondary"}>
-                          {c.status}
-                        </Badge>
+                        <div className="flex gap-2">
+                          <Badge variant={c.status === "collected" ? "default" : "secondary"}>
+                            {c.status}
+                          </Badge>
+                          <Badge className={c.segregation_status === "pass" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}>
+                            {c.segregation_status || "pass"}
+                          </Badge>
+                        </div>
                       </div>
                     ))}
                   </div>

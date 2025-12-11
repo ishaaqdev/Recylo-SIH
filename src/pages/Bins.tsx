@@ -21,7 +21,6 @@ const binTypes = [
   { key: "hazardous", label: "Hazardous", color: "hsl(var(--hazardous))", icon: AlertTriangle, bgColor: "bg-red-50" },
 ];
 
-// Track bin conversions
 interface BinConversion {
   from: string;
   to: string;
@@ -32,6 +31,7 @@ const BIN_CONVERSIONS_KEY = "recylo_bin_conversions";
 const Bins = () => {
   const [binData, setBinData] = useState<BinData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectEmptyBinModalOpen, setSelectEmptyBinModalOpen] = useState(false);
   const [swapModalOpen, setSwapModalOpen] = useState(false);
   const [selectedBin, setSelectedBin] = useState<string | null>(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
@@ -53,7 +53,6 @@ const Bins = () => {
   const saveConversions = (newConversions: BinConversion[]) => {
     localStorage.setItem(BIN_CONVERSIONS_KEY, JSON.stringify(newConversions));
     setConversions(newConversions);
-    // Dispatch custom event to notify other components in the same tab
     window.dispatchEvent(new CustomEvent("binConversionsUpdated"));
   };
 
@@ -74,6 +73,15 @@ const Bins = () => {
 
         if (binsData) {
           setBinData(binsData);
+        } else {
+          // Set default empty bin data
+          setBinData({
+            id: "default",
+            organic: 0,
+            recyclable: 0,
+            non_recyclable: 0,
+            hazardous: 0,
+          });
         }
       }
     } catch (error) {
@@ -83,8 +91,28 @@ const Bins = () => {
     }
   };
 
-  const handleSwapClick = (binKey: string) => {
+  // Get empty bins (0%)
+  const emptyBins = binData
+    ? binTypes.filter((bin) => {
+        const isEmpty = (binData[bin.key as keyof BinData] as number) === 0;
+        return isEmpty && typeof binData[bin.key as keyof BinData] === "number";
+      })
+    : [];
+
+  const handleStartSwap = () => {
+    if (emptyBins.length === 1) {
+      // Only one empty bin, directly select it
+      setSelectedBin(emptyBins[0].key);
+      setSwapModalOpen(true);
+    } else if (emptyBins.length > 1) {
+      // Multiple empty bins, let user choose
+      setSelectEmptyBinModalOpen(true);
+    }
+  };
+
+  const handleSelectEmptyBin = (binKey: string) => {
     setSelectedBin(binKey);
+    setSelectEmptyBinModalOpen(false);
     setSwapModalOpen(true);
   };
 
@@ -97,7 +125,6 @@ const Bins = () => {
   const handleConfirmSwap = async () => {
     if (!binData || !selectedBin || !swapTarget) return;
 
-    // Save the conversion
     const newConversions = [...conversions, { from: selectedBin, to: swapTarget }];
     saveConversions(newConversions);
     
@@ -111,7 +138,6 @@ const Bins = () => {
     setSwapTarget(null);
   };
 
-  // Get the display type for a bin (considering conversions)
   const getDisplayType = (binKey: string) => {
     const conversion = conversions.find((c) => c.from === binKey);
     if (conversion) {
@@ -120,25 +146,13 @@ const Bins = () => {
     return binTypes.find((b) => b.key === binKey);
   };
 
-  // Get empty bins for the swap section (bins that are at 0%)
-  const emptyBins = binData
-    ? binTypes.filter((bin) => {
-        const isEmpty = (binData[bin.key as keyof BinData] as number) === 0;
-        return isEmpty;
-      })
-    : [];
-
-  // Handle re-converting an already converted bin
   const handleReconvert = (binKey: string) => {
-    // Remove the existing conversion first
     const newConversions = conversions.filter((c) => c.from !== binKey);
     saveConversions(newConversions);
-    // Then open swap modal for new conversion
     setSelectedBin(binKey);
     setSwapModalOpen(true);
   };
 
-  // Undo a conversion (reset to original type)
   const handleUndoConversion = (binKey: string) => {
     const newConversions = conversions.filter((c) => c.from !== binKey);
     saveConversions(newConversions);
@@ -147,13 +161,6 @@ const Bins = () => {
       description: `Bin restored to ${binTypes.find((b) => b.key === binKey)?.label}.`,
     });
   };
-
-  // Get converted bins
-  const convertedBins = conversions.map((c) => ({
-    originalKey: c.from,
-    displayType: binTypes.find((b) => b.key === c.to)!,
-    originalType: binTypes.find((b) => b.key === c.from)!,
-  }));
 
   if (loading) {
     return (
@@ -169,7 +176,6 @@ const Bins = () => {
     );
   }
 
-  // Calculate total waste
   const totalWasteKg = binData
     ? Object.values({
         organic: binData.organic,
@@ -205,6 +211,7 @@ const Bins = () => {
         </div>
       </div>
 
+      {/* Bin Grid */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         {binTypes.map((bin, index) => {
           const percentage = binData ? (binData[bin.key as keyof BinData] as number) : 0;
@@ -241,64 +248,58 @@ const Bins = () => {
         })}
       </div>
 
-      {/* Swap Empty Bins Section - Mobile Friendly */}
+      {/* Swap Button - Show when any bin is 0% */}
       {emptyBins.length > 0 && (
-        <div className="bg-card rounded-3xl p-4 border border-border/50 animate-fade-up">
+        <div className="bg-card rounded-3xl p-4 border border-border/50 animate-fade-up mb-6">
           <div className="flex items-center gap-2 mb-3">
             <ArrowLeftRight className="w-4 h-4 text-primary" />
-            <h3 className="font-semibold text-foreground text-sm">Convert Empty Bins</h3>
+            <h3 className="font-semibold text-foreground text-sm">Bin Swap Available</h3>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Convert empty bins to maximize usage.
+          <p className="text-xs text-muted-foreground mb-4">
+            {emptyBins.length} empty bin{emptyBins.length > 1 ? "s" : ""} can be converted to other types.
           </p>
+          <Button
+            onClick={handleStartSwap}
+            className="w-full rounded-xl"
+          >
+            <ArrowLeftRight className="w-4 h-4 mr-2" />
+            Convert Empty Bin
+          </Button>
+        </div>
+      )}
+
+      {/* Converted Bins Management */}
+      {conversions.length > 0 && (
+        <div className="bg-card rounded-3xl p-4 border border-border/50 animate-fade-up">
+          <h3 className="font-semibold text-foreground text-sm mb-3">Converted Bins</h3>
           <div className="space-y-2">
-            {emptyBins.map((bin) => {
-              const IconComponent = bin.icon;
-              const isConverted = conversions.some((c) => c.from === bin.key);
-              const currentConversion = conversions.find((c) => c.from === bin.key);
-              const convertedTo = currentConversion ? binTypes.find((b) => b.key === currentConversion.to) : null;
-              
+            {conversions.map((conv) => {
+              const fromBin = binTypes.find((b) => b.key === conv.from);
+              const toBin = binTypes.find((b) => b.key === conv.to);
               return (
-                <div key={bin.key} className="p-3 bg-muted/50 rounded-xl">
+                <div key={conv.from} className="p-3 bg-muted/50 rounded-xl">
                   <div className="flex items-center gap-2 mb-2">
-                    <IconComponent className="w-4 h-4 text-foreground/70 flex-shrink-0" />
-                    <span className="text-sm font-medium truncate">{bin.label}</span>
-                    {isConverted && convertedTo && (
-                      <span className="text-xs text-muted-foreground">
-                        → {convertedTo.label}
-                      </span>
-                    )}
+                    <span className="text-sm font-medium">{fromBin?.label}</span>
+                    <span className="text-xs text-muted-foreground">→</span>
+                    <span className="text-sm font-medium text-primary">{toBin?.label}</span>
                   </div>
                   <div className="flex gap-2">
-                    {isConverted ? (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleUndoConversion(bin.key)}
-                          className="rounded-xl text-xs h-8 flex-1"
-                        >
-                          Undo
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleReconvert(bin.key)}
-                          className="rounded-xl text-xs h-8 flex-1"
-                        >
-                          Re-convert
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSwapClick(bin.key)}
-                        className="rounded-xl text-xs h-8 w-full"
-                      >
-                        Convert Bin
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleUndoConversion(conv.from)}
+                      className="rounded-xl text-xs h-8 flex-1"
+                    >
+                      Undo
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleReconvert(conv.from)}
+                      className="rounded-xl text-xs h-8 flex-1"
+                    >
+                      Re-convert
+                    </Button>
                   </div>
                 </div>
               );
@@ -307,21 +308,68 @@ const Bins = () => {
         </div>
       )}
 
-      {/* Swap Modal */}
-      {swapModalOpen && (
+      {/* Select Empty Bin Modal */}
+      {selectEmptyBinModalOpen && (
         <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-[60] flex items-end justify-center">
           <div className="bg-card w-full max-w-lg rounded-t-3xl p-6 animate-slide-up">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-foreground">Convert Bin Type</h3>
+              <h3 className="text-lg font-semibold text-foreground">Select Empty Bin</h3>
               <button
-                onClick={() => setSwapModalOpen(false)}
+                onClick={() => setSelectEmptyBinModalOpen(false)}
                 className="p-2 rounded-full hover:bg-muted transition-colors"
               >
                 <X className="w-5 h-5 text-muted-foreground" />
               </button>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
-              Select what type of waste the {binTypes.find((b) => b.key === selectedBin)?.label} bin should collect instead:
+              Choose which empty bin you want to convert:
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {emptyBins.map((bin) => {
+                const IconComponent = bin.icon;
+                const isAlreadyConverted = conversions.some((c) => c.from === bin.key);
+                return (
+                  <button
+                    key={bin.key}
+                    onClick={() => !isAlreadyConverted && handleSelectEmptyBin(bin.key)}
+                    disabled={isAlreadyConverted}
+                    className={`${bin.bgColor} p-4 rounded-2xl flex flex-col items-center gap-2 transition-all ${
+                      isAlreadyConverted 
+                        ? "opacity-50 cursor-not-allowed" 
+                        : "hover:scale-[1.02] active:scale-[0.98]"
+                    }`}
+                  >
+                    <IconComponent className="w-6 h-6 text-foreground/70" />
+                    <span className="text-xs font-medium text-center text-foreground">{bin.label}</span>
+                    {isAlreadyConverted && (
+                      <span className="text-[10px] text-primary">Already converted</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Swap Target Modal */}
+      {swapModalOpen && (
+        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-[60] flex items-end justify-center">
+          <div className="bg-card w-full max-w-lg rounded-t-3xl p-6 animate-slide-up">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-foreground">Convert To</h3>
+              <button
+                onClick={() => {
+                  setSwapModalOpen(false);
+                  setSelectedBin(null);
+                }}
+                className="p-2 rounded-full hover:bg-muted transition-colors"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Select what type of waste the {binTypes.find((b) => b.key === selectedBin)?.label} bin should collect:
             </p>
             <div className="grid grid-cols-3 gap-3">
               {binTypes
@@ -364,7 +412,11 @@ const Bins = () => {
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                onClick={() => setConfirmModalOpen(false)}
+                onClick={() => {
+                  setConfirmModalOpen(false);
+                  setSelectedBin(null);
+                  setSwapTarget(null);
+                }}
                 className="flex-1 rounded-2xl h-12"
               >
                 Cancel

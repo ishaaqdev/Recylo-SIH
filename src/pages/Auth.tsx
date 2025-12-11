@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mail, Phone, MapPin, User, Lock, Eye, EyeOff } from "lucide-react";
+import { Mail, Phone, MapPin, User, Lock, Eye, EyeOff, Map, Building, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
@@ -20,6 +20,9 @@ const Auth = () => {
     name: "",
     phone: "",
     address: "",
+    state: "",
+    district: "",
+    pincode: "",
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,11 +81,14 @@ const Auth = () => {
 
         if (error) throw error;
 
-        // Create household entry
+        // Create household entry with location data
         await supabase.from("households").insert({
           name: formData.name,
           phone: formData.phone,
           address: formData.address,
+          state: formData.state || "Odisha",
+          district: formData.district || "Khordha",
+          pincode: formData.pincode || "751024",
           qr_code: `RECYLO-${Date.now().toString(36).toUpperCase()}`,
         });
 
@@ -168,6 +174,39 @@ const Auth = () => {
                 onChange={handleChange}
                 className="pl-11 h-12 rounded-xl"
                 required={!isLogin}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="relative">
+                <Map className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  name="state"
+                  placeholder="State"
+                  value={formData.state}
+                  onChange={handleChange}
+                  className="pl-11 h-12 rounded-xl"
+                />
+              </div>
+              <div className="relative">
+                <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  name="district"
+                  placeholder="District"
+                  value={formData.district}
+                  onChange={handleChange}
+                  className="pl-11 h-12 rounded-xl"
+                />
+              </div>
+            </div>
+            <div className="relative">
+              <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                name="pincode"
+                placeholder="Pincode"
+                value={formData.pincode}
+                onChange={handleChange}
+                className="pl-11 h-12 rounded-xl"
+                maxLength={6}
               />
             </div>
           </>

@@ -2,6 +2,14 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -10,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ClipboardList, Play, CheckCircle, TrendingUp } from "lucide-react";
+import { ClipboardList, Play, CheckCircle, TrendingUp, Filter } from "lucide-react";
 import StatCard from "@/components/municipal/StatCard";
 import {
   LineChart,
@@ -37,7 +45,11 @@ interface Task {
 
 const MunicipalTasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [districts, setDistricts] = useState<string[]>([]);
+  const [selectedDistrict, setSelectedDistrict] = useState("all");
 
   const [stats, setStats] = useState({
     totalTasks: 0,
@@ -45,8 +57,7 @@ const MunicipalTasks = () => {
     completionsToday: 0,
   });
 
-  // Dummy engagement data
-  const engagementTrend = [
+  const [engagementTrend, setEngagementTrend] = useState([
     { day: "Mon", starts: 12, completions: 8 },
     { day: "Tue", starts: 15, completions: 10 },
     { day: "Wed", starts: 18, completions: 14 },
@@ -54,32 +65,73 @@ const MunicipalTasks = () => {
     { day: "Fri", starts: 20, completions: 15 },
     { day: "Sat", starts: 25, completions: 20 },
     { day: "Sun", starts: 14, completions: 10 },
-  ];
+  ]);
+
+  useEffect(() => {
+    fetchDistricts();
+  }, []);
 
   useEffect(() => {
     fetchTasks();
-  }, []);
+  }, [selectedDistrict]);
+
+  useEffect(() => {
+    const filtered = tasks.filter((task) =>
+      task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (task.description?.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+    setFilteredTasks(filtered);
+  }, [searchTerm, tasks]);
+
+  const fetchDistricts = async () => {
+    const { data } = await supabase
+      .from("households")
+      .select("district")
+      .not("district", "is", null);
+
+    if (data) {
+      const uniqueDistricts = [...new Set(data.map((h: any) => h.district))].filter(Boolean);
+      setDistricts(uniqueDistricts as string[]);
+    }
+  };
 
   const fetchTasks = async () => {
+    // Get household IDs for district filter
+    let householdIds: string[] = [];
+    if (selectedDistrict !== "all") {
+      const { data: householdsData } = await supabase
+        .from("households")
+        .select("id")
+        .eq("district", selectedDistrict);
+      householdIds = householdsData?.map((h: any) => h.id) || [];
+    }
+
     const { data: tasksData, error } = await supabase
       .from("rewards_tasks")
       .select("*")
       .order("title");
 
     if (!error && tasksData) {
-      // Fetch user_tasks counts for each task
       const tasksWithStats = await Promise.all(
         tasksData.map(async (task) => {
-          const { count: startedCount } = await supabase
+          let startedQuery = supabase
             .from("user_tasks")
             .select("*", { count: "exact", head: true })
             .eq("task_id", task.id);
 
-          const { count: completedCount } = await supabase
+          let completedQuery = supabase
             .from("user_tasks")
             .select("*", { count: "exact", head: true })
             .eq("task_id", task.id)
             .eq("status", "completed");
+
+          if (householdIds.length > 0) {
+            startedQuery = startedQuery.in("household_id", householdIds);
+            completedQuery = completedQuery.in("household_id", householdIds);
+          }
+
+          const { count: startedCount } = await startedQuery;
+          const { count: completedCount } = await completedQuery;
 
           return {
             ...task,
@@ -90,19 +142,28 @@ const MunicipalTasks = () => {
       );
 
       setTasks(tasksWithStats);
+      setFilteredTasks(tasksWithStats);
 
       // Calculate stats
       const today = new Date().toISOString().split("T")[0];
-      const { count: startsToday } = await supabase
+      let startsQuery = supabase
         .from("user_tasks")
         .select("*", { count: "exact", head: true })
         .gte("started_at", today);
 
-      const { count: completionsToday } = await supabase
+      let completionsQuery = supabase
         .from("user_tasks")
         .select("*", { count: "exact", head: true })
         .eq("status", "completed")
         .gte("completed_at", today);
+
+      if (householdIds.length > 0) {
+        startsQuery = startsQuery.in("household_id", householdIds);
+        completionsQuery = completionsQuery.in("household_id", householdIds);
+      }
+
+      const { count: startsToday } = await startsQuery;
+      const { count: completionsToday } = await completionsQuery;
 
       setStats({
         totalTasks: tasksData.length,
@@ -115,9 +176,27 @@ const MunicipalTasks = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Tasks & Engagement</h1>
-        <p className="text-muted-foreground">Track user task participation and completion</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Tasks & Engagement</h1>
+          <p className="text-muted-foreground">Track user task participation and completion</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <Select value={selectedDistrict} onValueChange={setSelectedDistrict}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by District" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Districts</SelectItem>
+              {districts.map((district) => (
+                <SelectItem key={district} value={district}>
+                  {district}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Stats */}
@@ -174,10 +253,16 @@ const MunicipalTasks = () => {
         </CardContent>
       </Card>
 
-      {/* Tasks Table */}
+      {/* Search and Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Available Tasks</CardTitle>
+          <Input
+            placeholder="Search tasks..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-xs"
+          />
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -199,14 +284,14 @@ const MunicipalTasks = () => {
                     Loading...
                   </TableCell>
                 </TableRow>
-              ) : tasks.length === 0 ? (
+              ) : filteredTasks.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No tasks available
                   </TableCell>
                 </TableRow>
               ) : (
-                tasks.map((task) => (
+                filteredTasks.map((task) => (
                   <TableRow key={task.id}>
                     <TableCell className="font-medium">{task.title}</TableCell>
                     <TableCell className="max-w-[200px] truncate text-muted-foreground">

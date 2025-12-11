@@ -54,9 +54,8 @@ const Home = () => {
             .eq("household_id", householdData.id)
             .maybeSingle();
 
-          if (binsData) {
-            setBinData(binsData);
-          }
+          // Set bin data even if null - component will handle default
+          setBinData(binsData || null);
         }
 
         const { data: factsData } = await supabase
@@ -113,12 +112,10 @@ const Home = () => {
         </div>
       )}
 
-      {/* Bin Overview */}
-      {binData && (
-        <div className="mb-6">
-          <BinOverview binData={binData} />
-        </div>
-      )}
+      {/* Bin Overview - Always show even with 0% filled */}
+      <div className="mb-6">
+        <BinOverview binData={binData} />
+      </div>
 
       {/* Eco Facts Carousel */}
       {ecoFacts.length > 0 && (

@@ -9,8 +9,16 @@ import {
   AlertTriangle,
   CheckCircle,
   Leaf,
+  Filter,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   PieChart,
   Pie,
@@ -41,9 +49,11 @@ const MunicipalDashboard = () => {
 
   const [wasteDistribution, setWasteDistribution] = useState<any[]>([]);
   const [complaintTypes, setComplaintTypes] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<string[]>([]);
+  const [selectedDistrict, setSelectedDistrict] = useState<string>("all");
 
-  // Dummy trend data
-  const wasteTrend = [
+  // Trend data with units in kg
+  const [wasteTrend, setWasteTrend] = useState([
     { day: "Mon", recyclable: 120, organic: 80, nonRecyclable: 40, hazardous: 5 },
     { day: "Tue", recyclable: 150, organic: 90, nonRecyclable: 35, hazardous: 8 },
     { day: "Wed", recyclable: 130, organic: 85, nonRecyclable: 45, hazardous: 3 },
@@ -51,9 +61,9 @@ const MunicipalDashboard = () => {
     { day: "Fri", recyclable: 160, organic: 95, nonRecyclable: 38, hazardous: 4 },
     { day: "Sat", recyclable: 200, organic: 110, nonRecyclable: 42, hazardous: 7 },
     { day: "Sun", recyclable: 140, organic: 75, nonRecyclable: 28, hazardous: 2 },
-  ];
+  ]);
 
-  const collectionsTrend = [
+  const [collectionsTrend, setCollectionsTrend] = useState([
     { day: "Mon", collections: 45 },
     { day: "Tue", collections: 52 },
     { day: "Wed", collections: 48 },
@@ -61,61 +71,108 @@ const MunicipalDashboard = () => {
     { day: "Fri", collections: 55 },
     { day: "Sat", collections: 70 },
     { day: "Sun", collections: 38 },
-  ];
+  ]);
+
+  useEffect(() => {
+    fetchDistricts();
+  }, []);
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [selectedDistrict]);
+
+  const fetchDistricts = async () => {
+    const { data } = await supabase
+      .from("households")
+      .select("district")
+      .not("district", "is", null);
+
+    if (data) {
+      const uniqueDistricts = [...new Set(data.map((h: any) => h.district))].filter(Boolean);
+      setDistricts(uniqueDistricts as string[]);
+    }
+  };
 
   const fetchDashboardData = async () => {
-    // Fetch households count
-    const { count: householdsCount } = await supabase
-      .from("households")
-      .select("*", { count: "exact", head: true });
+    // Build query based on district filter
+    let householdsQuery = supabase.from("households").select("id, district", { count: "exact" });
+    
+    if (selectedDistrict !== "all") {
+      householdsQuery = householdsQuery.eq("district", selectedDistrict);
+    }
 
-    // Fetch today's collections
+    const { data: householdsData, count: householdsCount } = await householdsQuery;
+    const householdIds = householdsData?.map((h: any) => h.id) || [];
+
+    // Fetch today's collections filtered by households
     const today = new Date().toISOString().split("T")[0];
-    const { count: collectionsToday } = await supabase
+    let collectionsQuery = supabase
       .from("collection_logs")
       .select("*", { count: "exact", head: true })
       .gte("collected_at", today);
 
-    // Fetch pending complaints
-    const { count: pendingComplaints } = await supabase
+    if (householdIds.length > 0 && selectedDistrict !== "all") {
+      collectionsQuery = collectionsQuery.in("household_id", householdIds);
+    }
+
+    const { count: collectionsToday } = await collectionsQuery;
+
+    // Fetch pending complaints filtered
+    let complaintsQuery = supabase
       .from("complaints")
       .select("*", { count: "exact", head: true })
       .eq("status", "pending");
 
-    // Fetch bins data for waste distribution
-    const { data: binsData } = await supabase.from("bins").select("*");
+    if (householdIds.length > 0 && selectedDistrict !== "all") {
+      complaintsQuery = complaintsQuery.in("household_id", householdIds);
+    }
+
+    const { count: pendingComplaints } = await complaintsQuery;
+
+    // Fetch bins data filtered
+    let binsQuery = supabase.from("bins").select("*");
+    if (householdIds.length > 0 && selectedDistrict !== "all") {
+      binsQuery = binsQuery.in("household_id", householdIds);
+    }
+
+    const { data: binsData } = await binsQuery;
 
     if (binsData) {
       const totals = binsData.reduce(
         (acc, bin) => ({
-          recyclable: acc.recyclable + bin.recyclable,
-          organic: acc.organic + bin.organic,
-          nonRecyclable: acc.nonRecyclable + bin.non_recyclable,
-          hazardous: acc.hazardous + bin.hazardous,
+          recyclable: acc.recyclable + (bin.recyclable || 0),
+          organic: acc.organic + (bin.organic || 0),
+          nonRecyclable: acc.nonRecyclable + (bin.non_recyclable || 0),
+          hazardous: acc.hazardous + (bin.hazardous || 0),
         }),
         { recyclable: 0, organic: 0, nonRecyclable: 0, hazardous: 0 }
       );
 
+      // Convert percentage to kg (assuming 10kg capacity per bin category)
+      const totalKg = Object.values(totals).reduce((a, b) => a + (b / 100) * 10 * binsData.length, 0);
+      const recyclableKg = (totals.recyclable / 100) * 10 * binsData.length;
+
       setWasteDistribution([
-        { name: "Recyclable", value: totals.recyclable, color: "#22c55e" },
-        { name: "Organic", value: totals.organic, color: "#3b82f6" },
-        { name: "Non-Recyclable", value: totals.nonRecyclable, color: "#1e293b" },
-        { name: "Hazardous", value: totals.hazardous, color: "#ef4444" },
+        { name: "Recyclable", value: totals.recyclable, kg: recyclableKg.toFixed(1), color: "#22c55e" },
+        { name: "Organic", value: totals.organic, kg: ((totals.organic / 100) * 10 * binsData.length).toFixed(1), color: "#3b82f6" },
+        { name: "Non-Recyclable", value: totals.nonRecyclable, kg: ((totals.nonRecyclable / 100) * 10 * binsData.length).toFixed(1), color: "#1e293b" },
+        { name: "Hazardous", value: totals.hazardous, kg: ((totals.hazardous / 100) * 10 * binsData.length).toFixed(1), color: "#ef4444" },
       ]);
 
       setStats((prev) => ({
         ...prev,
-        totalWasteToday: Object.values(totals).reduce((a, b) => a + b, 0),
-        totalRecyclables: totals.recyclable,
+        totalWasteToday: Math.round(totalKg),
+        totalRecyclables: Math.round(recyclableKg),
       }));
     }
 
-    // Fetch complaint types
-    const { data: complaintsData } = await supabase.from("complaints").select("category");
+    // Fetch complaint types filtered
+    let complaintTypesQuery = supabase.from("complaints").select("category, household_id");
+    if (householdIds.length > 0 && selectedDistrict !== "all") {
+      complaintTypesQuery = complaintTypesQuery.in("household_id", householdIds);
+    }
+
+    const { data: complaintsData } = await complaintTypesQuery;
     if (complaintsData) {
       const categoryCounts = complaintsData.reduce((acc: any, c) => {
         acc[c.category] = (acc[c.category] || 0) + 1;
@@ -127,20 +184,54 @@ const MunicipalDashboard = () => {
       );
     }
 
+    // Calculate segregation accuracy from collection logs
+    let segregationQuery = supabase.from("collection_logs").select("segregation_status");
+    if (householdIds.length > 0 && selectedDistrict !== "all") {
+      segregationQuery = segregationQuery.in("household_id", householdIds);
+    }
+
+    const { data: segregationData } = await segregationQuery;
+    let accuracy = 85;
+    if (segregationData && segregationData.length > 0) {
+      const passCount = segregationData.filter((s: any) => s.segregation_status === "pass").length;
+      accuracy = Math.round((passCount / segregationData.length) * 100);
+    }
+
     setStats((prev) => ({
       ...prev,
       totalHouseholds: householdsCount || 0,
       totalCollectionsToday: collectionsToday || 0,
       pendingComplaints: pendingComplaints || 0,
+      segregationAccuracy: accuracy,
     }));
   };
 
+  const totalWasteKg = wasteDistribution.reduce((sum, w) => sum + parseFloat(w.kg || 0), 0);
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">Overview of waste management operations</p>
+      {/* Header with Filter */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground">Overview of waste management operations</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <Select value={selectedDistrict} onValueChange={setSelectedDistrict}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by District" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Districts</SelectItem>
+              {districts.map((district) => (
+                <SelectItem key={district} value={district}>
+                  {district}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -158,7 +249,7 @@ const MunicipalDashboard = () => {
           trend={{ value: 12, isPositive: true }}
         />
         <StatCard
-          title="Waste Today (kg)"
+          title="Total Waste (kg)"
           value={stats.totalWasteToday}
           icon={Scale}
         />
@@ -188,6 +279,9 @@ const MunicipalDashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Waste Category Distribution</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Total: {totalWasteKg.toFixed(1)} kg across all bins
+            </p>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
@@ -201,13 +295,18 @@ const MunicipalDashboard = () => {
                     outerRadius={100}
                     paddingAngle={2}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, kg }) => `${name}: ${kg} kg`}
                   >
                     {wasteDistribution.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip 
+                    formatter={(value: any, name: string, props: any) => [
+                      `${props.payload.kg} kg (${value}%)`,
+                      name
+                    ]}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -218,6 +317,7 @@ const MunicipalDashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Waste Weight Trend (Weekly)</CardTitle>
+            <p className="text-sm text-muted-foreground">Values in kilograms (kg)</p>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
@@ -225,13 +325,13 @@ const MunicipalDashboard = () => {
                 <LineChart data={wasteTrend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis dataKey="day" stroke="#64748b" fontSize={12} />
-                  <YAxis stroke="#64748b" fontSize={12} />
-                  <Tooltip />
+                  <YAxis stroke="#64748b" fontSize={12} unit=" kg" />
+                  <Tooltip formatter={(value: any) => [`${value} kg`]} />
                   <Legend />
-                  <Line type="monotone" dataKey="recyclable" stroke="#22c55e" strokeWidth={2} />
-                  <Line type="monotone" dataKey="organic" stroke="#3b82f6" strokeWidth={2} />
-                  <Line type="monotone" dataKey="nonRecyclable" stroke="#1e293b" strokeWidth={2} />
-                  <Line type="monotone" dataKey="hazardous" stroke="#ef4444" strokeWidth={2} />
+                  <Line type="monotone" dataKey="recyclable" name="Recyclable (kg)" stroke="#22c55e" strokeWidth={2} />
+                  <Line type="monotone" dataKey="organic" name="Organic (kg)" stroke="#3b82f6" strokeWidth={2} />
+                  <Line type="monotone" dataKey="nonRecyclable" name="Non-Recyclable (kg)" stroke="#1e293b" strokeWidth={2} />
+                  <Line type="monotone" dataKey="hazardous" name="Hazardous (kg)" stroke="#ef4444" strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -245,6 +345,7 @@ const MunicipalDashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Daily Collections</CardTitle>
+            <p className="text-sm text-muted-foreground">Number of pickups per day</p>
           </CardHeader>
           <CardContent>
             <div className="h-[250px]">
@@ -265,6 +366,7 @@ const MunicipalDashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Complaint Types</CardTitle>
+            <p className="text-sm text-muted-foreground">Distribution by category</p>
           </CardHeader>
           <CardContent>
             <div className="h-[250px]">

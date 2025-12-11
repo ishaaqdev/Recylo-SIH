@@ -11,7 +11,7 @@ interface BinData {
 }
 
 interface BinOverviewProps {
-  binData: BinData;
+  binData: BinData | null;
 }
 
 interface BinConversion {
@@ -63,12 +63,22 @@ export const BinOverview = ({ binData }: BinOverviewProps) => {
     return binTypeConfig.find((b) => b.key === binKey);
   };
 
+  // Default bin data to 0 if not available
+  const defaultBinData: BinData = {
+    organic: 0,
+    recyclable: 0,
+    non_recyclable: 0,
+    hazardous: 0,
+  };
+
+  const actualBinData = binData || defaultBinData;
+
   const bins = binTypeConfig.map((binType) => {
     const displayType = getDisplayType(binType.key);
     return {
       originalKey: binType.key,
       label: displayType?.label || binType.label,
-      percentage: binData[binType.key as keyof BinData],
+      percentage: actualBinData[binType.key as keyof BinData] || 0,
       color: displayType?.color || binType.color,
       icon: displayType?.icon || binType.icon,
     };

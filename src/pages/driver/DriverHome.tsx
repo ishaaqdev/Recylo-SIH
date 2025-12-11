@@ -1,9 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { QrCode, Check, X, Truck } from "lucide-react";
+import { QrCode, Check, X, Truck, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Html5Qrcode } from "html5-qrcode";
-import { getHouseholdByQRCode, createCollectionLog } from "@/lib/driverActions";
+import { 
+  getHouseholdByQRCode, 
+  createCollectionLog, 
+  parseTaskQRCode, 
+  getTaskDetails, 
+  getHouseholdById, 
+  confirmTaskCompletion,
+  TaskVerificationData
+} from "@/lib/driverActions";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -12,6 +20,22 @@ interface Household {
   name: string;
   phone: string;
   address: string;
+}
+
+interface TaskVerification {
+  taskData: TaskVerificationData;
+  task: {
+    id: string;
+    title: string;
+    description: string;
+    points_reward: number;
+    level_reward: number;
+  };
+  household: {
+    id: string;
+    name: string;
+    phone: string;
+  };
 }
 
 const DriverHome = () => {
@@ -23,6 +47,11 @@ const DriverHome = () => {
   const [driverName, setDriverName] = useState("Driver");
   const [cameraError, setCameraError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  
+  // Task verification states
+  const [taskVerification, setTaskVerification] = useState<TaskVerification | null>(null);
+  const [showTaskSuccess, setShowTaskSuccess] = useState(false);
+  const [confirmingTask, setConfirmingTask] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -124,22 +153,76 @@ const DriverHome = () => {
 
   const handleQRScanned = async (code: string) => {
     try {
-      const household = await getHouseholdByQRCode(code);
-      if (household) {
-        setFoundHousehold(household);
+      // Check if it's a task verification QR
+      const taskData = parseTaskQRCode(code);
+      
+      if (taskData) {
+        // It's a task verification QR
+        const [task, household] = await Promise.all([
+          getTaskDetails(taskData.taskId),
+          getHouseholdById(taskData.householdId)
+        ]);
+        
+        if (task && household) {
+          setTaskVerification({
+            taskData,
+            task,
+            household
+          });
+        } else {
+          toast({
+            title: "Invalid QR Code",
+            description: "Task or household not found",
+            variant: "destructive"
+          });
+        }
       } else {
-        toast({
-          title: "Household not found",
-          description: "No household matches this QR code",
-          variant: "destructive"
-        });
+        // It's a household collection QR
+        const household = await getHouseholdByQRCode(code);
+        if (household) {
+          setFoundHousehold(household);
+        } else {
+          toast({
+            title: "Household not found",
+            description: "No household matches this QR code",
+            variant: "destructive"
+          });
+        }
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to fetch household data",
+        description: "Failed to process QR code",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleConfirmTask = async () => {
+    if (!taskVerification) return;
+    
+    setConfirmingTask(true);
+    try {
+      await confirmTaskCompletion(
+        taskVerification.task.id,
+        taskVerification.household.id,
+        taskVerification.task.points_reward,
+        taskVerification.task.level_reward
+      );
+      
+      setTaskVerification(null);
+      setShowTaskSuccess(true);
+      setTimeout(() => {
+        setShowTaskSuccess(false);
+      }, 2500);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to confirm task completion",
+        variant: "destructive"
+      });
+    } finally {
+      setConfirmingTask(false);
     }
   };
 
@@ -293,6 +376,77 @@ const DriverHome = () => {
             >
               OK
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Task Verification Popup */}
+      {taskVerification && !showTaskSuccess && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end">
+          <div className="bg-white w-full rounded-t-[32px] p-6 animate-slide-up">
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
+            
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center">
+                <Gift className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Task Verification</p>
+                <p className="font-bold text-gray-900">{taskVerification.task.title}</p>
+              </div>
+            </div>
+            
+            <div className="bg-purple-50 rounded-2xl p-5 mb-6">
+              <p className="text-sm text-gray-500 mb-1">Household</p>
+              <p className="text-lg font-bold text-gray-900 mb-3">{taskVerification.household.name}</p>
+              <p className="text-sm text-gray-500 mb-1">Reward</p>
+              <p className="text-lg font-semibold text-purple-600">
+                +{taskVerification.task.points_reward} points
+                {taskVerification.task.level_reward > 0 && ` • +${taskVerification.task.level_reward} level`}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Button
+                onClick={handleConfirmTask}
+                disabled={confirmingTask}
+                className="w-full h-16 rounded-2xl bg-purple-500 hover:bg-purple-600 text-white text-lg font-semibold shadow-lg shadow-purple-200"
+              >
+                {confirmingTask ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Confirming...
+                  </span>
+                ) : (
+                  <>
+                    <Check className="w-6 h-6 mr-3" />
+                    CONFIRM TASK COMPLETED
+                  </>
+                )}
+              </Button>
+              
+              <Button
+                onClick={() => setTaskVerification(null)}
+                variant="outline"
+                className="w-full h-16 rounded-2xl border-2 border-gray-200 text-gray-600 hover:bg-gray-50 text-lg font-semibold"
+              >
+                <X className="w-6 h-6 mr-3" />
+                CANCEL
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Success Popup */}
+      {showTaskSuccess && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl p-8 text-center animate-scale-in">
+            <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Gift className="w-10 h-10 text-purple-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Task Verified!</h2>
+            <p className="text-gray-500">Reward sent to household</p>
           </div>
         </div>
       )}

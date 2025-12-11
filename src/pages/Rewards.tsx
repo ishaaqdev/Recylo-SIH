@@ -142,33 +142,6 @@ const Rewards = () => {
     setShowQRModal(true);
   };
 
-  const handleQRScanned = async () => {
-    if (!household || !pendingCompleteTask) return;
-
-    try {
-      await supabase
-        .from("households")
-        .update({
-          points: household.points + pendingCompleteTask.points_reward,
-          level: household.level + pendingCompleteTask.level_reward,
-        })
-        .eq("id", household.id);
-
-      const newActiveTasks = activeTasks.filter((t) => t.id !== pendingCompleteTask.id);
-      saveActiveTasks(newActiveTasks);
-
-      setShowQRModal(false);
-      setSelectedTask(pendingCompleteTask);
-      setPendingCompleteTask(null);
-      setShowCongrats(true);
-      fetchData();
-    } catch (error) {
-      toast({
-        title: "Error completing task",
-        variant: "destructive",
-      });
-    }
-  };
 
   // Generate 30 levels
   const levels = Array.from({ length: 30 }, (_, i) => ({
@@ -437,7 +410,6 @@ const Rewards = () => {
             setShowQRModal(false);
             setPendingCompleteTask(null);
           }}
-          onConfirm={handleQRScanned}
           taskId={pendingCompleteTask.id}
           taskTitle={pendingCompleteTask.title}
           householdId={household.id}

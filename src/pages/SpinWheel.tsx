@@ -173,18 +173,20 @@ const SpinWheel = () => {
   const segmentAngle = 360 / rewards.length;
 
   return (
-    <div className="min-h-screen bg-background pb-28 px-5 pt-8">
+    <div className="min-h-screen bg-background pb-20 px-5 pt-8">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8 animate-fade-up">
+      <div className="flex items-center gap-4 mb-6 animate-fade-up">
         <Link
           to="/rewards"
           className="w-10 h-10 bg-card rounded-xl flex items-center justify-center border border-border/30"
         >
           <ArrowLeft className="w-5 h-5 text-foreground" />
         </Link>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Spin & Win</h1>
-          <p className="text-sm text-muted-foreground">Try your luck</p>
+        <div className="flex-1">
+          <div className="bg-primary rounded-2xl p-4">
+            <h1 className="text-lg font-semibold text-primary-foreground">Spin & Win</h1>
+            <p className="text-sm text-primary-foreground/80">Try your luck</p>
+          </div>
         </div>
       </div>
 
@@ -268,7 +270,7 @@ const SpinWheel = () => {
 
       {/* Result Modal */}
       {showResult && wonReward && (
-        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-[60] flex items-center justify-center p-6">
           <div className="bg-card w-full max-w-sm rounded-3xl p-8 animate-scale-in text-center">
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <RotateCw className="w-8 h-8 text-primary" />

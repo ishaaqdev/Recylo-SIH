@@ -168,19 +168,19 @@ const Rewards = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-28 px-5 pt-8">
+    <div className="min-h-screen bg-background pb-20 px-5 pt-8">
       {/* Points Card */}
-      <div className="bg-card rounded-2xl p-5 border border-border/30 mb-6 animate-fade-up">
+      <div className="bg-primary rounded-3xl p-5 mb-6 animate-fade-up">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-sm text-muted-foreground mb-1">Your Points</p>
-            <h2 className="text-3xl font-bold text-foreground">
+            <p className="text-sm text-primary-foreground/80 mb-1">Your Points</p>
+            <h2 className="text-3xl font-bold text-primary-foreground">
               {household?.points?.toLocaleString()}
             </h2>
           </div>
-          <div className="flex items-center gap-1.5 bg-primary/10 px-3 py-1.5 rounded-full">
-            <Star className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold text-primary">
+          <div className="flex items-center gap-1.5 bg-primary-foreground/20 px-3 py-1.5 rounded-full">
+            <Star className="w-4 h-4 text-primary-foreground" />
+            <span className="text-sm font-semibold text-primary-foreground">
               Level {household?.level}
             </span>
           </div>
@@ -188,24 +188,24 @@ const Rewards = () => {
         <div className="flex gap-2">
           <Link
             to="/spinwheel"
-            className="flex-1 bg-muted rounded-xl p-3 text-center hover:bg-muted/80 transition-colors"
+            className="flex-1 bg-primary-foreground/20 rounded-xl p-3 text-center hover:bg-primary-foreground/30 transition-colors"
           >
-            <RotateCw className="w-5 h-5 text-primary mx-auto mb-1" />
-            <p className="text-xs font-medium text-foreground">Spin</p>
+            <RotateCw className="w-5 h-5 text-primary-foreground mx-auto mb-1" />
+            <p className="text-xs font-medium text-primary-foreground">Spin</p>
           </Link>
           <Link
             to="/luckydraw"
-            className="flex-1 bg-muted rounded-xl p-3 text-center hover:bg-muted/80 transition-colors"
+            className="flex-1 bg-primary-foreground/20 rounded-xl p-3 text-center hover:bg-primary-foreground/30 transition-colors"
           >
-            <Gift className="w-5 h-5 text-primary mx-auto mb-1" />
-            <p className="text-xs font-medium text-foreground">Draws</p>
+            <Gift className="w-5 h-5 text-primary-foreground mx-auto mb-1" />
+            <p className="text-xs font-medium text-primary-foreground">Draws</p>
           </Link>
           <Link
             to="/coupons"
-            className="flex-1 bg-muted rounded-xl p-3 text-center hover:bg-muted/80 transition-colors"
+            className="flex-1 bg-primary-foreground/20 rounded-xl p-3 text-center hover:bg-primary-foreground/30 transition-colors"
           >
-            <Ticket className="w-5 h-5 text-primary mx-auto mb-1" />
-            <p className="text-xs font-medium text-foreground">Coupons</p>
+            <Ticket className="w-5 h-5 text-primary-foreground mx-auto mb-1" />
+            <p className="text-xs font-medium text-primary-foreground">Coupons</p>
           </Link>
         </div>
       </div>
@@ -305,7 +305,7 @@ const Rewards = () => {
 
       {/* Task Start Modal */}
       {showTaskModal && selectedTask && (
-        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-[60] flex items-center justify-center p-6">
           <div className="bg-card w-full max-w-sm rounded-2xl p-6 animate-scale-in">
             <div className="text-center mb-6">
               <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
@@ -336,7 +336,7 @@ const Rewards = () => {
 
       {/* Congratulations Modal */}
       {showCongrats && selectedTask && (
-        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-[60] flex items-center justify-center p-6">
           <div className="bg-card w-full max-w-sm rounded-2xl p-6 animate-scale-in text-center">
             <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mx-auto mb-4">
               <Check className="w-6 h-6 text-emerald-600" />

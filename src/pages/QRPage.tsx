@@ -60,11 +60,11 @@ const QRPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-28 px-5 pt-8">
-      {/* Header */}
-      <div className="text-center mb-8 animate-fade-up">
-        <h1 className="text-xl font-bold text-foreground">Collection QR</h1>
-        <p className="text-sm text-muted-foreground">Show this to the collector</p>
+    <div className="min-h-screen bg-background pb-20 px-5 pt-8">
+      {/* Header Card */}
+      <div className="bg-primary rounded-3xl p-5 mb-6 text-center animate-fade-up">
+        <h1 className="text-lg font-semibold text-primary-foreground">Collection QR</h1>
+        <p className="text-sm text-primary-foreground/80">Show this to the collector</p>
       </div>
 
       {/* QR Code Card */}

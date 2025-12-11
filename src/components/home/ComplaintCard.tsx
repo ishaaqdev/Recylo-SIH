@@ -84,8 +84,8 @@ export const ComplaintCard = ({ householdId }: ComplaintCardProps) => {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center animate-fade-up">
-          <div className="bg-card w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-6 animate-slide-up">
+        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-up">
+          <div className="bg-card w-full max-w-md rounded-3xl p-6 animate-scale-in">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-foreground">Report Issue</h3>
               <button

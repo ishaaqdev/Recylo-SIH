@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Star, Clock, Gift, Lock, Check, Ticket, RotateCw } from "lucide-react";
+import { Star, Clock, Gift, Lock, Check, Ticket, RotateCw, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
+import TaskQRModal from "@/components/rewards/TaskQRModal";
 
 interface Task {
   id: string;
@@ -55,6 +56,8 @@ const Rewards = () => {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showCongrats, setShowCongrats] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [pendingCompleteTask, setPendingCompleteTask] = useState<Task | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -134,22 +137,29 @@ const Rewards = () => {
     return activeTasks.find((t) => t.id === taskId);
   };
 
-  const handleCompleteTask = async (task: Task) => {
-    if (!household) return;
+  const handleCompleteClick = (task: Task) => {
+    setPendingCompleteTask(task);
+    setShowQRModal(true);
+  };
+
+  const handleQRScanned = async () => {
+    if (!household || !pendingCompleteTask) return;
 
     try {
       await supabase
         .from("households")
         .update({
-          points: household.points + task.points_reward,
-          level: household.level + task.level_reward,
+          points: household.points + pendingCompleteTask.points_reward,
+          level: household.level + pendingCompleteTask.level_reward,
         })
         .eq("id", household.id);
 
-      const newActiveTasks = activeTasks.filter((t) => t.id !== task.id);
+      const newActiveTasks = activeTasks.filter((t) => t.id !== pendingCompleteTask.id);
       saveActiveTasks(newActiveTasks);
 
-      setSelectedTask(task);
+      setShowQRModal(false);
+      setSelectedTask(pendingCompleteTask);
+      setPendingCompleteTask(null);
       setShowCongrats(true);
       fetchData();
     } catch (error) {
@@ -269,10 +279,10 @@ const Rewards = () => {
                     </div>
                     <Button
                       size="sm"
-                      onClick={() => handleCompleteTask(task)}
+                      onClick={() => handleCompleteClick(task)}
                       className="rounded-xl"
                     >
-                      <Check className="w-4 h-4 mr-1" />
+                      <QrCode className="w-4 h-4 mr-1" />
                       Complete
                     </Button>
                   </div>
@@ -417,6 +427,21 @@ const Rewards = () => {
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Task QR Verification Modal */}
+      {showQRModal && pendingCompleteTask && household && (
+        <TaskQRModal
+          open={showQRModal}
+          onClose={() => {
+            setShowQRModal(false);
+            setPendingCompleteTask(null);
+          }}
+          onConfirm={handleQRScanned}
+          taskId={pendingCompleteTask.id}
+          taskTitle={pendingCompleteTask.title}
+          householdId={household.id}
+        />
       )}
     </div>
   );

@@ -333,7 +333,7 @@ const Rewards = () => {
                   </span>
                 </div>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col">
                 <span className={`text-xs ${
                   level.status === "completed" 
                     ? "text-emerald-600" 
@@ -344,7 +344,7 @@ const Rewards = () => {
                   {level.points} pts
                 </span>
                 {level.specialReward && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  <span className={`text-xs px-2 py-0.5 rounded-full mt-2 w-fit ${
                     level.status === "completed"
                       ? "bg-emerald-200 text-emerald-700"
                       : level.status === "current"

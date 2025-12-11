@@ -86,7 +86,7 @@ export const BinOverview = ({ binData }: BinOverviewProps) => {
 
       {/* Detail Modal */}
       {selectedBin && selectedBinData && (
-        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
+        <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
           <div className="bg-card w-full max-w-sm rounded-2xl p-6 animate-scale-in">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-foreground">

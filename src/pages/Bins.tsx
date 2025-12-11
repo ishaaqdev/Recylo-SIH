@@ -53,6 +53,8 @@ const Bins = () => {
   const saveConversions = (newConversions: BinConversion[]) => {
     localStorage.setItem(BIN_CONVERSIONS_KEY, JSON.stringify(newConversions));
     setConversions(newConversions);
+    // Dispatch custom event to notify other components in the same tab
+    window.dispatchEvent(new CustomEvent("binConversionsUpdated"));
   };
 
   const fetchBins = async () => {
@@ -118,14 +120,33 @@ const Bins = () => {
     return binTypes.find((b) => b.key === binKey);
   };
 
-  // Get empty bins for the swap section (bins that are at 0 and not converted)
+  // Get empty bins for the swap section (bins that are at 0%)
   const emptyBins = binData
     ? binTypes.filter((bin) => {
-        const isConverted = conversions.some((c) => c.from === bin.key);
         const isEmpty = (binData[bin.key as keyof BinData] as number) === 0;
-        return isEmpty && !isConverted;
+        return isEmpty;
       })
     : [];
+
+  // Handle re-converting an already converted bin
+  const handleReconvert = (binKey: string) => {
+    // Remove the existing conversion first
+    const newConversions = conversions.filter((c) => c.from !== binKey);
+    saveConversions(newConversions);
+    // Then open swap modal for new conversion
+    setSelectedBin(binKey);
+    setSwapModalOpen(true);
+  };
+
+  // Undo a conversion (reset to original type)
+  const handleUndoConversion = (binKey: string) => {
+    const newConversions = conversions.filter((c) => c.from !== binKey);
+    saveConversions(newConversions);
+    toast({
+      title: "Conversion undone",
+      description: `Bin restored to ${binTypes.find((b) => b.key === binKey)?.label}.`,
+    });
+  };
 
   // Get converted bins
   const convertedBins = conversions.map((c) => ({
@@ -202,20 +223,56 @@ const Bins = () => {
           <p className="text-sm text-muted-foreground mb-4">
             You have {emptyBins.length} empty bin{emptyBins.length > 1 ? 's' : ''}. Convert to another waste type to maximize usage.
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="space-y-2">
             {emptyBins.map((bin) => {
               const IconComponent = bin.icon;
+              const isConverted = conversions.some((c) => c.from === bin.key);
+              const currentConversion = conversions.find((c) => c.from === bin.key);
+              const convertedTo = currentConversion ? binTypes.find((b) => b.key === currentConversion.to) : null;
+              
               return (
-                <Button
-                  key={bin.key}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleSwapClick(bin.key)}
-                  className="rounded-xl"
-                >
-                  <IconComponent className="w-4 h-4 mr-2" />
-                  Convert {bin.label}
-                </Button>
+                <div key={bin.key} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
+                  <div className="flex items-center gap-2">
+                    <IconComponent className="w-4 h-4 text-foreground/70" />
+                    <span className="text-sm font-medium">{bin.label}</span>
+                    {isConverted && convertedTo && (
+                      <span className="text-xs text-muted-foreground">
+                        → {convertedTo.label}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    {isConverted ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleUndoConversion(bin.key)}
+                          className="rounded-xl text-xs h-8"
+                        >
+                          Undo
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleReconvert(bin.key)}
+                          className="rounded-xl text-xs h-8"
+                        >
+                          Re-convert
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSwapClick(bin.key)}
+                        className="rounded-xl text-xs h-8"
+                      >
+                        Convert
+                      </Button>
+                    )}
+                  </div>
+                </div>
               );
             })}
           </div>

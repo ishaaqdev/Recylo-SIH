@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   User,
   QrCode,
@@ -40,6 +40,7 @@ const settingsItems = [
 ];
 
 const Profile = () => {
+  const navigate = useNavigate();
   const [household, setHousehold] = useState<Household | null>(null);
   const [loading, setLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -102,6 +103,19 @@ const Profile = () => {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({ title: "Logged out successfully" });
+      navigate("/auth");
+    } catch (error) {
+      toast({
+        title: "Failed to logout",
+        variant: "destructive",
+      });
     }
   };
 
@@ -187,7 +201,10 @@ const Profile = () => {
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </button>
         ))}
-        <button className="w-full flex items-center gap-4 p-4 hover:bg-destructive/5 transition-colors">
+        <button 
+          onClick={handleLogout}
+          className="w-full flex items-center gap-4 p-4 hover:bg-destructive/5 transition-colors"
+        >
           <LogOut className="w-5 h-5 text-destructive" />
           <span className="flex-1 text-left font-medium text-destructive text-sm">Logout</span>
           <ChevronRight className="w-4 h-4 text-destructive/50" />

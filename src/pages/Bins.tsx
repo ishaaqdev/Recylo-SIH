@@ -169,12 +169,40 @@ const Bins = () => {
     );
   }
 
+  // Calculate total waste
+  const totalWasteKg = binData
+    ? Object.values({
+        organic: binData.organic,
+        recyclable: binData.recyclable,
+        non_recyclable: binData.non_recyclable,
+        hazardous: binData.hazardous,
+      }).reduce((sum, val) => sum + (val / 100) * 10, 0)
+    : 0;
+
   return (
     <div className="min-h-screen bg-background pb-20 px-5 pt-8">
       {/* Header Card */}
       <div className="bg-primary rounded-3xl p-5 mb-6 animate-fade-up">
         <h1 className="text-xl font-semibold text-primary-foreground">My Smart Bin</h1>
         <p className="text-primary-foreground/80 text-sm">Monitor your waste compartments</p>
+      </div>
+
+      {/* Total Waste Stats */}
+      <div className="bg-card rounded-2xl p-4 mb-6 border border-border/30 animate-fade-up">
+        <p className="text-sm text-muted-foreground mb-1">Total Waste Collected</p>
+        <p className="text-2xl font-bold text-foreground">{totalWasteKg.toFixed(1)} kg</p>
+        <div className="grid grid-cols-4 gap-2 mt-3">
+          {binTypes.map((bin) => {
+            const displayType = getDisplayType(bin.key);
+            const weight = binData ? ((binData[bin.key as keyof BinData] as number) / 100) * 10 : 0;
+            return (
+              <div key={bin.key} className="text-center">
+                <p className="text-xs text-muted-foreground">{displayType?.label.split('-')[0] || bin.label.split('-')[0]}</p>
+                <p className="text-sm font-semibold text-foreground">{weight.toFixed(1)} kg</p>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-6">
@@ -213,15 +241,15 @@ const Bins = () => {
         })}
       </div>
 
-      {/* Swap Empty Bins Section */}
+      {/* Swap Empty Bins Section - Mobile Friendly */}
       {emptyBins.length > 0 && (
-        <div className="bg-card rounded-3xl p-5 border border-border/50 animate-fade-up">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="bg-card rounded-3xl p-4 border border-border/50 animate-fade-up">
+          <div className="flex items-center gap-2 mb-3">
             <ArrowLeftRight className="w-4 h-4 text-primary" />
-            <h3 className="font-semibold text-foreground">Convert Empty Bins</h3>
+            <h3 className="font-semibold text-foreground text-sm">Convert Empty Bins</h3>
           </div>
-          <p className="text-sm text-muted-foreground mb-4">
-            You have {emptyBins.length} empty bin{emptyBins.length > 1 ? 's' : ''}. Convert to another waste type to maximize usage.
+          <p className="text-xs text-muted-foreground mb-3">
+            Convert empty bins to maximize usage.
           </p>
           <div className="space-y-2">
             {emptyBins.map((bin) => {
@@ -231,10 +259,10 @@ const Bins = () => {
               const convertedTo = currentConversion ? binTypes.find((b) => b.key === currentConversion.to) : null;
               
               return (
-                <div key={bin.key} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
-                  <div className="flex items-center gap-2">
-                    <IconComponent className="w-4 h-4 text-foreground/70" />
-                    <span className="text-sm font-medium">{bin.label}</span>
+                <div key={bin.key} className="p-3 bg-muted/50 rounded-xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <IconComponent className="w-4 h-4 text-foreground/70 flex-shrink-0" />
+                    <span className="text-sm font-medium truncate">{bin.label}</span>
                     {isConverted && convertedTo && (
                       <span className="text-xs text-muted-foreground">
                         → {convertedTo.label}
@@ -248,7 +276,7 @@ const Bins = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleUndoConversion(bin.key)}
-                          className="rounded-xl text-xs h-8"
+                          className="rounded-xl text-xs h-8 flex-1"
                         >
                           Undo
                         </Button>
@@ -256,7 +284,7 @@ const Bins = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleReconvert(bin.key)}
-                          className="rounded-xl text-xs h-8"
+                          className="rounded-xl text-xs h-8 flex-1"
                         >
                           Re-convert
                         </Button>
@@ -266,9 +294,9 @@ const Bins = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleSwapClick(bin.key)}
-                        className="rounded-xl text-xs h-8"
+                        className="rounded-xl text-xs h-8 w-full"
                       >
-                        Convert
+                        Convert Bin
                       </Button>
                     )}
                   </div>

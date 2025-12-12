@@ -55,12 +55,14 @@ export const createCollectionLog = async (
   
   if (error) throw error;
 
-  // Award points and advance level for proper collection
+  // Award points based on current level and advance level for proper collection
   if (segregation_status === "pass") {
     const household = await getHouseholdById(household_id);
     if (household) {
-      const newPoints = (household.points || 0) + 10;
-      const newLevel = (household.level || 1) + 1; // Always advance by 1 level
+      const currentLevel = household.level || 1;
+      const pointsToAward = currentLevel * 50; // Level 1 = 50 pts, Level 2 = 100 pts, etc.
+      const newPoints = (household.points || 0) + pointsToAward;
+      const newLevel = currentLevel + 1; // Advance to next level
       
       const { error: updateError } = await supabase
         .from("households")
@@ -73,7 +75,7 @@ export const createCollectionLog = async (
       if (updateError) {
         console.error("Failed to update household points/level:", updateError);
       } else {
-        console.log(`Household ${household_id} earned 10 points (now ${newPoints}) and advanced to level ${newLevel}`);
+        console.log(`Household ${household_id} earned ${pointsToAward} points (now ${newPoints}) and advanced to level ${newLevel}`);
       }
     }
   }

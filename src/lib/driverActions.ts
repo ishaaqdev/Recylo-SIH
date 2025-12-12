@@ -59,10 +59,10 @@ export const createCollectionLog = async (
   if (segregation_status === "pass") {
     const household = await getHouseholdById(household_id);
     if (household) {
-      const newPoints = household.points + 10;
-      const newLevel = household.level + 1; // Always advance by 1 level
+      const newPoints = (household.points || 0) + 10;
+      const newLevel = (household.level || 1) + 1; // Always advance by 1 level
       
-      await supabase
+      const { error: updateError } = await supabase
         .from("households")
         .update({
           points: newPoints,
@@ -70,8 +70,11 @@ export const createCollectionLog = async (
         })
         .eq("id", household_id);
       
-      // Create a notification record for the user
-      console.log(`Household ${household_id} earned 10 points and advanced to level ${newLevel}`);
+      if (updateError) {
+        console.error("Failed to update household points/level:", updateError);
+      } else {
+        console.log(`Household ${household_id} earned 10 points (now ${newPoints}) and advanced to level ${newLevel}`);
+      }
     }
   }
 

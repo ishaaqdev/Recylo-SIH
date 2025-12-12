@@ -15,6 +15,7 @@ import {
   Scissors,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import {
   Select,
   SelectContent,
@@ -354,35 +355,56 @@ const MunicipalRecycling = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-4 gap-4">
-            <DonutChart
-              percentage={recyclablePercents.plastic}
-              color="hsl(200, 80%, 50%)"
-              label="Plastic"
-              size={90}
-              strokeWidth={8}
-            />
-            <DonutChart
-              percentage={recyclablePercents.metal}
-              color="hsl(220, 70%, 60%)"
-              label="Metal"
-              size={90}
-              strokeWidth={8}
-            />
-            <DonutChart
-              percentage={recyclablePercents.cardboard}
-              color="hsl(30, 60%, 50%)"
-              label="Cardboard"
-              size={90}
-              strokeWidth={8}
-            />
-            <DonutChart
-              percentage={recyclablePercents.paper}
-              color="hsl(45, 70%, 55%)"
-              label="Paper"
-              size={90}
-              strokeWidth={8}
-            />
+          <div className="flex items-center justify-center gap-8">
+            <div className="w-64 h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "Plastic", value: recyclableData.plastic, color: "hsl(200, 80%, 50%)" },
+                      { name: "Metal", value: recyclableData.metal, color: "hsl(220, 70%, 60%)" },
+                      { name: "Cardboard", value: recyclableData.cardboard, color: "hsl(30, 60%, 50%)" },
+                      { name: "Paper", value: recyclableData.paper, color: "hsl(45, 70%, 55%)" },
+                    ]}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={90}
+                    paddingAngle={2}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    labelLine={false}
+                  >
+                    <Cell fill="hsl(200, 80%, 50%)" />
+                    <Cell fill="hsl(220, 70%, 60%)" />
+                    <Cell fill="hsl(30, 60%, 50%)" />
+                    <Cell fill="hsl(45, 70%, 55%)" />
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: number) => formatWeight(value)}
+                    contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))" }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid grid-cols-1 gap-3 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(200, 80%, 50%)" }} />
+                <span>Plastic: {formatWeight(recyclableData.plastic)} ({recyclablePercents.plastic}%)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(220, 70%, 60%)" }} />
+                <span>Metal: {formatWeight(recyclableData.metal)} ({recyclablePercents.metal}%)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(30, 60%, 50%)" }} />
+                <span>Cardboard: {formatWeight(recyclableData.cardboard)} ({recyclablePercents.cardboard}%)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(45, 70%, 55%)" }} />
+                <span>Paper: {formatWeight(recyclableData.paper)} ({recyclablePercents.paper}%)</span>
+              </div>
+            </div>
           </div>
           <div className="mt-6 border-t pt-4">
             <h4 className="font-semibold mb-3">Material Values</h4>

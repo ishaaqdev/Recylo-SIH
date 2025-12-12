@@ -240,7 +240,7 @@ const DriverHome = () => {
       if (segregationStatus === "pass") {
         toast({
           title: "Points Awarded",
-          description: "Household earned 10 points for proper segregation!",
+          description: "Household earned points and advanced a level!",
         });
       }
     } catch (error) {

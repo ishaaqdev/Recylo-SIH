@@ -119,10 +119,11 @@ const Home = () => {
           setHousehold(prev => prev ? { ...prev, ...payload.new } : null);
           
           // Show toast notification when points/level updated
-          if (newLevel > oldLevel || newPoints > household.points) {
+          if (newLevel > oldLevel) {
+            const pointsEarned = oldLevel * 50; // Points based on previous level
             toast({
               title: "Collection Complete!",
-              description: `You earned 10 points and advanced from Level ${oldLevel} to Level ${newLevel}!`,
+              description: `You earned ${pointsEarned} points and advanced from Level ${oldLevel} to Level ${newLevel}!`,
             });
           }
         }
@@ -152,10 +153,11 @@ const Home = () => {
                 .maybeSingle();
               if (data) {
                 const oldLevel = household.level;
+                const pointsEarned = oldLevel * 50;
                 setHousehold(data);
                 toast({
                   title: "Collection Complete!",
-                  description: `You earned 10 points and advanced from Level ${oldLevel} to Level ${data.level}!`,
+                  description: `You earned ${pointsEarned} points and advanced from Level ${oldLevel} to Level ${data.level}!`,
                 });
               }
             };

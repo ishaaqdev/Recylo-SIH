@@ -1,0 +1,9 @@
+# AI & Hardware Dependencies (Python 3.9+)
+onnxruntime>=1.15.0
+opencv-python>=4.8.0
+numpy>=1.24.3
+RPi.GPIO>=0.7.1
+supabase>=2.3.0
+
+# If using the PiCamera library instead of OpenCV VideoCapture
+picamera>=1.13

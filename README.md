@@ -33,8 +33,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**GitHub Repository:** [https://github.com/ishaaqdev/Recylo-SIH](https://github.com/ishaaqdev/Recylo-SIH)  
-**Live Technical Preview:** [https://ishaaqdev.github.io/Recylo-SIH/](https://ishaaqdev.github.io/Recylo-SIH/)
+ 
+**Live Technical Preview:** [See Live Demo and site](https://ishaaqdev.github.io/Recylo-SIH/)
 
 ---
 

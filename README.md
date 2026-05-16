@@ -1,13 +1,15 @@
 <div align="center">
-  <img src="docs/images/logo.png" alt="Recylo Logo" width="300" />
+  <img src="docs/images/logo.png" alt="Recylo Logo" width="500" />
 </div>
+
 <br/>
+
 <div align="center">
-  <img src="https://upload.wikimedia.org/wikipedia/commons/5/55/Emblem_of_India.svg" alt="Gov of India" height="60" style="margin: 0 15px;" />
-  <img src="https://upload.wikimedia.org/wikipedia/en/e/ef/Intellectual_Property_India_Logo.svg" alt="IP India Logo" height="60" style="margin: 0 15px; background:white; padding:4px; border-radius:4px" />
-  <img src="docs/images/BGSCET logo.png" alt="BGSCET Logo" height="60" style="margin: 0 15px;" />
-  <img src="docs/images/SIH logo.png" alt="SIH Logo" height="60" style="margin: 0 15px;" />
-  <img src="docs/images/GIET_logo.png" alt="GIET Logo" height="60" style="margin: 0 15px;" />
+  <img src="docs/images/gov_india.png" alt="Gov of India" height="80" style="margin: 0 20px;" />
+  <img src="docs/images/IP_rights.png" alt="IP India Logo" height="80" style="margin: 0 20px; background:white; padding:6px; border-radius:8px" />
+  <img src="docs/images/SIH logo.png" alt="SIH Logo" height="80" style="margin: 0 20px;" />
+  <img src="docs/images/BGSCET logo.png" alt="BGSCET Logo" height="80" style="margin: 0 20px;" />
+  <img src="docs/images/GIET_logo.png" alt="GIET Logo" height="80" style="margin: 0 20px;" />
 </div>
 
 <br/>

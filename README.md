@@ -170,7 +170,7 @@ A massive shoutout to the incredible minds that made this possible in 120 hours:
 - **Ullas M** <br> <img src="https://cdn-icons-png.flaticon.com/512/25/25231.png" width="12"/> [GitHub](https://github.com/ullasroxx) &nbsp;|&nbsp; <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="12"/> [LinkedIn](https://www.linkedin.com/in/ullas-m-naik/)
 - **Hema B** <br> <img src="https://cdn-icons-png.flaticon.com/512/25/25231.png" width="12"/> [GitHub](https://github.com/hema004-pjt) &nbsp;|&nbsp; <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="12"/> [LinkedIn](https://www.linkedin.com/in/hema-b-2581b6301/)
 - **Namratha N** <br> <img src="https://cdn-icons-png.flaticon.com/512/25/25231.png" width="12"/> [GitHub](#) &nbsp;|&nbsp; <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="12"/> [LinkedIn](https://www.linkedin.com/in/namratha-n-835937396/)
-- **Nikhitha N** <br> <img src="https://cdn-icons-png.flaticon.com/512/25/25231.png" width="12"/> [GitHub](#) &nbsp;|&nbsp; <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="12"/> [LinkedIn](https://www.linkedin.com/in/nikhitha-nagaraj-21b075373/)
+- **Nikhitha N** <br> <img src="https://cdn-icons-png.flaticon.com/512/25/25231.png" width="12"/> [GitHub](https://github.com/Nikhitha-38) &nbsp;|&nbsp; <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="12"/> [LinkedIn](https://www.linkedin.com/in/nikhitha-nagaraj-21b075373/)
 
 ---
 
